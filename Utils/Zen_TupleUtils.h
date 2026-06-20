@@ -73,6 +73,9 @@ namespace Zen
             using Type = typename FilterDuplicates<Tuple<RemainingTypes...>, Tuple<FilteredTypes..., T>>::Type;
         };
 
+        template <typename Types>
+        using FilterDuplicates_T = typename FilterDuplicates<Types>::Type;
+
         // -=-=-=-= Sort Types =-=-=-=-
         template <template <typename, typename> class Comparator, typename RemainingTypes>
         struct SortTypes;
