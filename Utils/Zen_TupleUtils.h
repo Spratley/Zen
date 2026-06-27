@@ -187,6 +187,13 @@ namespace Zen
         template <template <typename, typename> class Comparator, typename Types>
         using SortTypes_T = typename SortTypes<Comparator, Types>::Type;
 
+        // -=-=-=-= Sorting Comparators =-=-=-=-
+        template <typename LHS, typename RHS>
+        struct CompareLargerAlignment
+        {
+            static constexpr bool value = alignof(LHS) > alignof(RHS);
+        };
+
     } // namespace TupleUtils
 } // namespace Zen
 
