@@ -10,10 +10,21 @@ namespace Zen
         template <typename ComponentType>
         static consteval ComponentInfo GetInfo()
         {
-            return ComponentInfo{ .m_factory = TypelessComponentFactory::GetFactory<ComponentType>(),
-                                  .m_size = sizeof(ComponentType),
-                                  .m_alignment = alignof(ComponentType) };
-        }
+            ComponentInfo info;
+            info.m_factory = TypelessComponentFactory::GetFactory<ComponentType>();
+            info.m_size = sizeof(ComponentType);
+            info.m_alignment = alignof(ComponentType);
+            return info;
+        };
+
+        // TODO: Remove me
+        static consteval ComponentInfo GetNullInfo() { return ComponentInfo(); }
+
+        consteval ComponentInfo()
+            : m_factory(TypelessComponentFactory())
+            , m_size(0u)
+            , m_alignment(0u)
+        {}
 
         TypelessComponentFactory m_factory;
         SizeT m_size;

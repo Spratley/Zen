@@ -1,10 +1,10 @@
 #pragma once
 
 #include <tuple>
+#include "../Zen_Types.h"
 
 namespace Zen
 {
-    // Should this move to a dedicated Zen_Tuple.h?
     template <typename... Types>
     using Tuple = std::tuple<Types...>;
 
@@ -30,7 +30,7 @@ namespace Zen
         using Concat_T = typename Concat<Tuples...>::Type;
 
         // -=-=-=-= Contains Type =-=-=-=-
-        template <typename T, typename... Types>
+        template <typename T, typename Types>
         struct ContainsType;
 
         template <typename T, typename... Types>
@@ -39,6 +39,21 @@ namespace Zen
 
         template <typename T, typename... Types>
         constexpr inline bool ContainsType_V = ContainsType<T, Types...>::value;
+
+        // -=-=-=-= Index Of =-=-=-=-
+        template <typename T, typename Types>
+        struct IndexOf;
+
+        template <typename T, typename... Types>
+        struct IndexOf<T, Tuple<T, Types...>> : std::integral_constant<SizeT, 0>
+        {};
+
+        template <typename T, typename U, typename... Types>
+        struct IndexOf<T, Tuple<U, Types...>> : std::integral_constant<SizeT, IndexOf<T, Tuple<Types...>>::value + 1>
+        {};
+
+        template <typename T, typename... Types>
+        constexpr inline SizeT IndexOf_V = IndexOf<T, Types...>::value;
 
         // -=-=-=-= Filter Duplicates =-=-=-=-
         template <typename RemainingTypes, typename FilteredTypes = Tuple<>>

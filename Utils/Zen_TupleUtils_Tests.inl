@@ -39,6 +39,12 @@ namespace Zen
             static_assert(!TupleUtils::ContainsType_V<D, Input>, "Tuple Contains Type Failed to Detect Missing Type!");
         } // namespace TestContainsType
 
+        namespace TestIndexOf
+        {
+            using Input = Tuple<A, B, C>;
+            static_assert(TupleUtils::IndexOf_V<B, Input> == 1, "Tuple Index Of Failed!");
+        } // namespace TestIndexOf
+
         namespace TestFilterDuplicates
         {
             using Input = Tuple<A, B, B, A, C, B, A>;

@@ -111,7 +111,7 @@ namespace Zen
 
         public:
             template <typename T>
-            consteval U32 GetIndex() const
+            constexpr U32 GetIndex() const
             {
                 return m_getIndex(HashType_V<T, U64>);
             }

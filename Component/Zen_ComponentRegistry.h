@@ -17,12 +17,18 @@ namespace Zen
         {}
 
         template <typename T>
-        consteval U32 GetComponentIndex() const
+        constexpr U32 GetComponentIndex() const
         {
             return m_componentIndexer.GetIndex<T>();
         }
 
-        consteval ComponentInfo GetComponentInfo(U32 p_componentIndex) const
+        template <typename T>
+        constexpr bool IsRegistered() const
+        {
+            return GetComponentIndex<T>() != std::numeric_limits<U32>::max();
+        }
+
+        constexpr ComponentInfo GetComponentInfo(U32 p_componentIndex) const
         {
             return m_getComponentInfo(p_componentIndex);
         }
@@ -31,15 +37,13 @@ namespace Zen
         template <typename... ComponentTypes>
         static constexpr ComponentInfo GetComponentInfoImpl(U32 p_componentIndex)
         {
-            constexpr auto componentInfos = []() {
-                return std::array<ComponentInfo, sizeof...(ComponentTypes)>{
-                    ComponentInfo::GetInfo<ComponentTypes>()...
-                };
-            }();
+            constexpr SizeT componentCount = sizeof...(ComponentTypes);
+            static constexpr auto componentInfos =
+              std::array<ComponentInfo, componentCount>{ ComponentInfo::GetInfo<ComponentTypes>()... };
 
             if (p_componentIndex >= componentInfos.size())
             {
-                return ComponentInfo();
+                return ComponentInfo::GetNullInfo();
             }
             return componentInfos[p_componentIndex];
         }

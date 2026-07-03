@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace Zen
 {
     using I8 = char;

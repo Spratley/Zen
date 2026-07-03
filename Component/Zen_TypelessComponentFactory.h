@@ -9,6 +9,9 @@ namespace Zen
     // Right now it depends on the end user knowing that they need to call ~T()
     // and the associated memory return function of choice
 
+    // I've also haphazardly added a generic constructor, which is dangerous because
+    // it leaves m_makeImpl as nullptr. Technically it's for error cases but still..
+
     class TypelessComponentFactory
     {
     public:
@@ -20,12 +23,15 @@ namespace Zen
             });
         }
 
+        consteval TypelessComponentFactory()
+            : m_makeImpl(nullptr)
+        {}
+
         constexpr void* MakeInPlace(void* p_address) const { return m_makeImpl(p_address); }
 
     private:
         using MakeFunctionType = void* (*)(void*);
 
-        TypelessComponentFactory() = delete;
         consteval TypelessComponentFactory(MakeFunctionType const& p_makeImpl)
             : m_makeImpl(p_makeImpl)
         {}
