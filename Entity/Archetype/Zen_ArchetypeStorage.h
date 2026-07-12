@@ -1,8 +1,11 @@
 #pragma once
 
-#include "../../Utils/Zen_TupleUtils.h"
+#include "../../Component/Zen_ComponentInfo.h"
+#include "../../Utils/Zen_TypeListUtils.h"
 #include "../../Zen_Types.h"
 #include "Zen_Archetype.h"
+
+#include <tuple>
 
 namespace Zen
 {
@@ -11,7 +14,19 @@ namespace Zen
         Archetype m_archetype;
         SizeT m_capacity;
         SizeT m_count;
-        void* buffer;
+        void* m_buffer;
+
+        template <typename Component>
+        constexpr Component* GetBuffer() const
+        {
+            SizeT bufferOffset = 0;
+            SizeT const componentIndex = m_archetype.GetLocalComponentIndex<Component>();
+            for (SizeT i = 0; i < componentIndex; ++i)
+            {
+                bufferOffset += m_archetype.GetComponentInfo(i).m_size * m_capacity;
+            }
+            return reinterpret_cast<Component*>(reinterpret_cast<SizeT>(m_buffer) + bufferOffset);
+        }
     };
 
     // Warning! This assumes the ArchetypeStorage won't add or remove entities during iteration!
@@ -24,56 +39,65 @@ namespace Zen
 
         struct Iterator
         {
-            constexpr Iterator(void* const* p_componentBuffers, SizeT p_index = 0)
-                : m_componentBuffers()
-                , m_index(p_index)
-            {
-                for (U32 i = 0; i < ComponentCount; ++i)
-                {
-                    m_componentBuffers[i] = p_componentBuffers[i];
-                }
-            }
+            constexpr Iterator(ArchetypeView& p_view, SizeT p_index = 0);
 
-            constexpr Tuple<ViewedComponents&...> operator*() const
-            {
-                return Tuple<ViewedComponents&...>{ (GetBuffer<ViewedComponents>()[m_index], ...) };
-            }
-
-            constexpr Iterator& operator++()
-            {
-                ++m_index;
-                return *this;
-            }
-
+            // Should this return a Zen type?
+            constexpr std::tuple<ViewedComponents&...> operator*() const;
+            constexpr Iterator& operator++();
             friend constexpr bool operator!=(Iterator const& p_lhs, Iterator const& p_rhs)
             {
-                return p_lhs.m_componentBuffers[0] != p_rhs.m_componentBuffers[0] && p_lhs.m_index != p_rhs.m_index;
+                // This has to be in the class because it's a dependant type
+                return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
             }
 
             template <typename Component>
-            constexpr Component* GetBuffer() const
-            {
-                return static_cast<Component*>(
-                  m_componentBuffers[TupleUtils::IndexOf_V<Component, Tuple<ViewedComponents...>>]);
-            }
+            constexpr Component* GetBuffer() const;
 
         private:
-            void* m_componentBuffers[ComponentCount];
+            ArchetypeView& m_view;
             SizeT m_index = 0;
         };
 
         constexpr ArchetypeView(ArchetypeStorage const& p_archetypeStorage)
-            : m_componentBuffers()
+            : m_componentBuffers{ static_cast<void*>(p_archetypeStorage.GetBuffer<ViewedComponents>())... }
             , m_entityCount(p_archetypeStorage.m_count)
-        {
-            // 
-        }
+        {}
 
-        constexpr Iterator begin() const { return Iterator(m_componentBuffers); }
-        constexpr Iterator end() const { return Iterator(m_componentBuffers, m_entityCount); }
+        constexpr Iterator begin() const { return Iterator(*this); }
+        constexpr Iterator end() const { return Iterator(*this, m_entityCount); }
 
     private:
         void* m_componentBuffers[ComponentCount];
         SizeT const m_entityCount;
     };
+
+    // -=-=-=-= Iterator =-=-=-=-
+    template <typename... ViewedComponents>
+    constexpr ArchetypeView<ViewedComponents...>::Iterator::Iterator(ArchetypeView& p_view, SizeT p_index)
+        : m_view(p_view)
+        , m_index(p_index)
+    {}
+
+    template <typename... ViewedComponents>
+    constexpr inline std::tuple<ViewedComponents&...> ArchetypeView<ViewedComponents...>::Iterator::operator*() const
+    {
+        return std::tie<ViewedComponents&...>(GetBuffer<ViewedComponents>()[m_index]...);
+    }
+
+    template <typename... ViewedComponents>
+    constexpr inline ArchetypeView<ViewedComponents...>::Iterator&
+      ArchetypeView<ViewedComponents...>::Iterator::operator++()
+    {
+        ++m_index;
+        return *this;
+    }
+
+    template <typename... ViewedComponents>
+    template <typename Component>
+    constexpr inline Component* ArchetypeView<ViewedComponents...>::Iterator::GetBuffer() const
+    {
+        return static_cast<Component*>(
+          m_view.m_componentBuffers[TypeListUtils::IndexOf_V<Component, TypeList<ViewedComponents...>>]);
+    }
+
 } // namespace Zen

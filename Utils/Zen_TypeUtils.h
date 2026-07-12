@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Zen_MathUtils.h"
-#include "Zen_TupleUtils.h"
+#include "Zen_TypeListUtils.h"
 
 #include <array>
 #include <limits>
@@ -61,7 +61,7 @@ namespace Zen
         struct ValidateHashCollisions;
 
         template <typename... Types, typename HashSize>
-        struct ValidateHashCollisions<Tuple<Types...>, HashSize>
+        struct ValidateHashCollisions<TypeList<Types...>, HashSize>
         {
             static constexpr SizeT invalidIndex = std::numeric_limits<SizeT>::max();
 
@@ -91,8 +91,8 @@ namespace Zen
             static constexpr bool value = []() {
                 if constexpr (violatingIndex != invalidIndex)
                 {
-                    using CollidingType = typename std::tuple_element_t<violatingIndex, Tuple<Types...>>;
-                    [[maybe_unused]] TypeHashCollisionError<CollidingType> error_trigger;
+                    using CollidingType = typename std::tuple_element_t<violatingIndex, TypeList<Types...>>;
+                    [[maybe_unused]] TypeHashCollisionError<CollidingType> errorTrigger;
                 }
                 return violatingIndex == invalidIndex;
             }();
@@ -105,7 +105,7 @@ namespace Zen
 
         public:
             template <typename... Types>
-            consteval TypeIndexer(Tuple<Types...>)
+            consteval TypeIndexer(TypeList<Types...>)
                 : m_getIndex(&GetIndexImpl<Types...>)
             {}
 
@@ -122,7 +122,7 @@ namespace Zen
             {
                 constexpr SizeT typeCount = sizeof...(Types);
                 constexpr auto typeHashes = std::array<U64, typeCount>{ HashType_V<Types, U64>... };
-                constexpr bool hashCollisionDetected = !ValidateHashCollisions<Tuple<Types...>, U64>::value;
+                constexpr bool hashCollisionDetected = !ValidateHashCollisions<TypeList<Types...>, U64>::value;
                 if constexpr (hashCollisionDetected)
                 {
                     return std::numeric_limits<U32>::max();

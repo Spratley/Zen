@@ -1,7 +1,12 @@
 #pragma once
 
+#include "../Utils/Zen_TypeListUtils.h"
 #include "../Utils/Zen_TypeUtils.h"
+#include "../Zen_Types.h"
 #include "Zen_ComponentInfo.h"
+
+#include <array>
+#include <limits>
 
 namespace Zen
 {
@@ -11,8 +16,8 @@ namespace Zen
 
     public:
         template <typename... ComponentTypes>
-        consteval ComponentRegistry(Tuple<ComponentTypes...>)
-            : m_componentIndexer(Tuple<ComponentTypes...>{})
+        consteval ComponentRegistry(TypeList<ComponentTypes...>)
+            : m_componentIndexer(TypeList<ComponentTypes...>{})
             , m_getComponentInfo(&GetComponentInfoImpl<ComponentTypes...>)
         {}
 

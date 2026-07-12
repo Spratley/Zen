@@ -1,40 +1,45 @@
 #pragma once
 
-#include <tuple>
 #include "../Zen_Types.h"
+
+#include <type_traits>
 
 namespace Zen
 {
+    // TypeList is an empty object type that smuggles other types as template parameters. Originally I had used a Tuple
+    // but found myself needing to instantiate the tuple to call constructors. This way, instantiating a TypeList to
+    // call a templated constructor will always be a simple call, even if complex types are used as parameters.
     template <typename... Types>
-    using Tuple = std::tuple<Types...>;
+    struct TypeList
+    {};
 
-    namespace TupleUtils
+    namespace TypeListUtils
     {
-        // -=-=-=-= Tuple Concat =-=-=-=-
+        // -=-=-=-= TypeList Concat =-=-=-=-
         template <typename ATypes, typename BTypes, typename... RemainingTypes>
         struct Concat;
 
         template <typename... ATypes, typename... BTypes>
-        struct Concat<Tuple<ATypes...>, Tuple<BTypes...>>
+        struct Concat<TypeList<ATypes...>, TypeList<BTypes...>>
         {
-            using Type = Tuple<ATypes..., BTypes...>;
+            using Type = TypeList<ATypes..., BTypes...>;
         };
 
         template <typename... ATypes, typename... BTypes, typename... RemainingTypes>
-        struct Concat<Tuple<ATypes...>, Tuple<BTypes...>, RemainingTypes...>
+        struct Concat<TypeList<ATypes...>, TypeList<BTypes...>, RemainingTypes...>
         {
-            using Type = typename Concat<Tuple<ATypes..., BTypes...>, RemainingTypes...>::Type;
+            using Type = typename Concat<TypeList<ATypes..., BTypes...>, RemainingTypes...>::Type;
         };
 
-        template <typename... Tuples>
-        using Concat_T = typename Concat<Tuples...>::Type;
+        template <typename... TypeLists>
+        using Concat_T = typename Concat<TypeLists...>::Type;
 
         // -=-=-=-= Contains Type =-=-=-=-
         template <typename T, typename Types>
         struct ContainsType;
 
         template <typename T, typename... Types>
-        struct ContainsType<T, Tuple<Types...>> : std::bool_constant<(std::is_same_v<T, Types> || ...)>
+        struct ContainsType<T, TypeList<Types...>> : std::bool_constant<(std::is_same_v<T, Types> || ...)>
         {};
 
         template <typename T, typename... Types>
@@ -45,47 +50,47 @@ namespace Zen
         struct IndexOf;
 
         template <typename T, typename... Types>
-        struct IndexOf<T, Tuple<T, Types...>> : std::integral_constant<SizeT, 0>
+        struct IndexOf<T, TypeList<T, Types...>> : std::integral_constant<SizeT, 0>
         {};
 
         template <typename T, typename U, typename... Types>
-        struct IndexOf<T, Tuple<U, Types...>> : std::integral_constant<SizeT, IndexOf<T, Tuple<Types...>>::value + 1>
+        struct IndexOf<T, TypeList<U, Types...>> : std::integral_constant<SizeT, IndexOf<T, TypeList<Types...>>::value + 1>
         {};
 
         template <typename T, typename... Types>
         constexpr inline SizeT IndexOf_V = IndexOf<T, Types...>::value;
 
         // -=-=-=-= Filter Duplicates =-=-=-=-
-        template <typename RemainingTypes, typename FilteredTypes = Tuple<>>
+        template <typename RemainingTypes, typename FilteredTypes = TypeList<>>
         struct FilterDuplicates;
 
         template <bool IsDuplicate, typename T, typename RemainingTypes, typename FilteredTypes>
         struct FilterDuplicatesBranch;
 
         template <typename FilteredTypes>
-        struct FilterDuplicates<Tuple<>, FilteredTypes>
+        struct FilterDuplicates<TypeList<>, FilteredTypes>
         {
             using Type = FilteredTypes;
         };
 
         template <typename T, typename... RemainingTypes, typename... FilteredTypes>
-        struct FilterDuplicates<Tuple<T, RemainingTypes...>, Tuple<FilteredTypes...>>
+        struct FilterDuplicates<TypeList<T, RemainingTypes...>, TypeList<FilteredTypes...>>
         {
-            static constexpr bool IsDuplicate = ContainsType_V<T, Tuple<FilteredTypes...>>;
+            static constexpr bool IsDuplicate = ContainsType_V<T, TypeList<FilteredTypes...>>;
             using Type =
-              typename FilterDuplicatesBranch<IsDuplicate, T, Tuple<RemainingTypes...>, Tuple<FilteredTypes...>>::Type;
+              typename FilterDuplicatesBranch<IsDuplicate, T, TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>::Type;
         };
 
         template <typename T, typename... RemainingTypes, typename... FilteredTypes>
-        struct FilterDuplicatesBranch<true, T, Tuple<RemainingTypes...>, Tuple<FilteredTypes...>>
+        struct FilterDuplicatesBranch<true, T, TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>
         {
-            using Type = typename FilterDuplicates<Tuple<RemainingTypes...>, Tuple<FilteredTypes...>>::Type;
+            using Type = typename FilterDuplicates<TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>::Type;
         };
 
         template <typename T, typename... RemainingTypes, typename... FilteredTypes>
-        struct FilterDuplicatesBranch<false, T, Tuple<RemainingTypes...>, Tuple<FilteredTypes...>>
+        struct FilterDuplicatesBranch<false, T, TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>
         {
-            using Type = typename FilterDuplicates<Tuple<RemainingTypes...>, Tuple<FilteredTypes..., T>>::Type;
+            using Type = typename FilterDuplicates<TypeList<RemainingTypes...>, TypeList<FilteredTypes..., T>>::Type;
         };
 
         template <typename Types>
@@ -112,32 +117,32 @@ namespace Zen
         struct SortTypesBranch;
 
         template <template <typename, typename> class Comparator>
-        struct SortTypes<Comparator, Tuple<>>
+        struct SortTypes<Comparator, TypeList<>>
         {
-            using Type = Tuple<>;
+            using Type = TypeList<>;
         };
 
         template <template <typename, typename> class Comparator, typename T>
-        struct SortTypes<Comparator, Tuple<T>>
+        struct SortTypes<Comparator, TypeList<T>>
         {
-            using Type = Tuple<T>;
+            using Type = TypeList<T>;
         };
 
         template <template <typename, typename> class Comparator, typename T, typename... RemainingTypes>
-        struct SortTypes<Comparator, Tuple<T, RemainingTypes...>>
+        struct SortTypes<Comparator, TypeList<T, RemainingTypes...>>
         {
-            using Type = typename SortTypesImpl<Comparator, Tuple<RemainingTypes...>, T, Tuple<>, Tuple<>>::Type;
+            using Type = typename SortTypesImpl<Comparator, TypeList<RemainingTypes...>, T, TypeList<>, TypeList<>>::Type;
         };
 
         template <template <typename, typename> class Comparator,
                   typename Pivot,
                   typename... LHSTypes,
                   typename... RHSTypes>
-        struct SortTypesImpl<Comparator, Tuple<>, Pivot, Tuple<LHSTypes...>, Tuple<RHSTypes...>>
+        struct SortTypesImpl<Comparator, TypeList<>, Pivot, TypeList<LHSTypes...>, TypeList<RHSTypes...>>
         {
-            using Type = typename Concat<typename SortTypes<Comparator, Tuple<LHSTypes...>>::Type,
-                                         Tuple<Pivot>,
-                                         typename SortTypes<Comparator, Tuple<RHSTypes...>>::Type>::Type;
+            using Type = typename Concat<typename SortTypes<Comparator, TypeList<LHSTypes...>>::Type,
+                                         TypeList<Pivot>,
+                                         typename SortTypes<Comparator, TypeList<RHSTypes...>>::Type>::Type;
         };
 
         template <template <typename, typename> class Comparator,
@@ -146,15 +151,15 @@ namespace Zen
                   typename Pivot,
                   typename... LHSTypes,
                   typename... RHSTypes>
-        struct SortTypesImpl<Comparator, Tuple<T, RemainingTypes...>, Pivot, Tuple<LHSTypes...>, Tuple<RHSTypes...>>
+        struct SortTypesImpl<Comparator, TypeList<T, RemainingTypes...>, Pivot, TypeList<LHSTypes...>, TypeList<RHSTypes...>>
         {
             using Type = typename SortTypesBranch<Comparator,
                                                   Comparator<T, Pivot>::value,
                                                   T,
-                                                  Tuple<RemainingTypes...>,
+                                                  TypeList<RemainingTypes...>,
                                                   Pivot,
-                                                  Tuple<LHSTypes...>,
-                                                  Tuple<RHSTypes...>>::Type;
+                                                  TypeList<LHSTypes...>,
+                                                  TypeList<RHSTypes...>>::Type;
         };
 
         template <template <typename, typename> class Comparator,
@@ -166,16 +171,16 @@ namespace Zen
         struct SortTypesBranch<Comparator,
                                true,
                                T,
-                               Tuple<RemainingTypes...>,
+                               TypeList<RemainingTypes...>,
                                Pivot,
-                               Tuple<LHSTypes...>,
-                               Tuple<RHSTypes...>>
+                               TypeList<LHSTypes...>,
+                               TypeList<RHSTypes...>>
         {
             using Type = typename SortTypesImpl<Comparator,
-                                                Tuple<RemainingTypes...>,
+                                                TypeList<RemainingTypes...>,
                                                 Pivot,
-                                                Tuple<LHSTypes..., T>,
-                                                Tuple<RHSTypes...>>::Type;
+                                                TypeList<LHSTypes..., T>,
+                                                TypeList<RHSTypes...>>::Type;
         };
 
         template <template <typename, typename> class Comparator,
@@ -187,16 +192,16 @@ namespace Zen
         struct SortTypesBranch<Comparator,
                                false,
                                T,
-                               Tuple<RemainingTypes...>,
+                               TypeList<RemainingTypes...>,
                                Pivot,
-                               Tuple<LHSTypes...>,
-                               Tuple<RHSTypes...>>
+                               TypeList<LHSTypes...>,
+                               TypeList<RHSTypes...>>
         {
             using Type = typename SortTypesImpl<Comparator,
-                                                Tuple<RemainingTypes...>,
+                                                TypeList<RemainingTypes...>,
                                                 Pivot,
-                                                Tuple<LHSTypes...>,
-                                                Tuple<RHSTypes..., T>>::Type;
+                                                TypeList<LHSTypes...>,
+                                                TypeList<RHSTypes..., T>>::Type;
         };
 
         template <template <typename, typename> class Comparator, typename Types>
@@ -209,7 +214,7 @@ namespace Zen
             static constexpr bool value = alignof(LHS) > alignof(RHS);
         };
 
-    } // namespace TupleUtils
+    } // namespace TypeListUtils
 } // namespace Zen
 
-#include "Zen_TupleUtils_Tests.inl"
+#include "Zen_TypeListUtils_Tests.inl"

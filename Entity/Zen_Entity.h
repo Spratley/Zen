@@ -27,7 +27,7 @@ namespace Zen
     struct EntityKey
     {
         Entity::ID m_index;
-        uint32_t m_archetypeID;
+        uint32_t m_archetypeIndex;
     };
 
     using EntityProxyStorage = std::vector<EntityKey>;

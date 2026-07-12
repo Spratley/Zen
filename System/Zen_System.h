@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Entity/Archetype/Zen_ArchetypeStorage.h"
-#include "../Utils/Zen_TupleUtils.h"
 
 #include <concepts>
 
@@ -14,10 +13,10 @@ namespace Zen
 
         using CRTPType = System;
         using BaseType = SystemBase<System, Components...>;
-        static_assert(!std::is_same_v<Tuple<>, Tuple<Components...>>, "No components requested for system tick!");
+        static_assert(!std::is_same_v<TypeList<>, TypeList<Components...>>, "No components requested for system tick!");
 
     public:
-        using ComponentList = Tuple<Components...>;
+        using ComponentList = TypeList<Components...>;
 
     protected:
         using ComponentView = ArchetypeView<Components...>;

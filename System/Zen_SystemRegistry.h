@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Entity/Archetype/Zen_ArchetypeArena.h"
-#include "../Utils/Zen_TupleUtils.h"
+#include "../Utils/Zen_TypeListUtils.h"
 #include "Zen_System.h"
 
 namespace Zen
@@ -12,7 +12,7 @@ namespace Zen
         using ExecuteSignature = void (*)(ArchetypeArena&);
 
         template <typename... SystemTypes>
-        consteval SystemRegistry(Tuple<SystemTypes...>)
+        consteval SystemRegistry(TypeList<SystemTypes...>)
             : m_execute(&ExecuteSystemsImpl<SystemTypes...>)
         {}
 

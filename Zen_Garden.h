@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Component/Zen_ComponentRegistry.h"
+#include "Entity/Archetype/Zen_Archetype.h"
+#include "Entity/Archetype/Zen_ArchetypeArena.h"
 #include "Entity/Zen_Entity.h"
 #include "System/Zen_SystemRegistry.h"
-#include "Utils/Zen_TupleUtils.h"
+#include "Utils/Zen_TypeListUtils.h"
 
 namespace Zen
 {
@@ -13,14 +15,14 @@ namespace Zen
     {
     public:
         template <typename... ComponentTypes, typename... SystemTypes>
-        constexpr Garden(Tuple<ComponentTypes...>, Tuple<SystemTypes...>);
+        constexpr Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>);
 
         constexpr void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
 
         template <typename... Components>
-        constexpr Entity Spawn(/*Archetype? Component list?*/)
+        constexpr Entity Spawn(Components const&... /*p_components*/)
         {
-            return m_archetypeArena.Spawn<Components...>();
+            return m_archetypeArena.Spawn(Archetype(TypeList<Components...>{}));
         }
 
     private:
@@ -31,10 +33,11 @@ namespace Zen
     };
 
     template <typename... ComponentTypes, typename... SystemTypes>
-    constexpr Garden::Garden(Tuple<ComponentTypes...>, Tuple<SystemTypes...>)
-        : m_componentRegistry(TupleUtils::SortTypes_T<TupleUtils::CompareLargerAlignment,
-                                                      TupleUtils::FilterDuplicates_T<Tuple<ComponentTypes...>>>{})
-        , m_systemRegistry(TupleUtils::FilterDuplicates_T<Tuple<SystemTypes...>>{})
+    constexpr Garden::Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
+        : m_componentRegistry(
+            TypeListUtils::SortTypes_T<TypeListUtils::CompareLargerAlignment,
+                                       TypeListUtils::FilterDuplicates_T<TypeList<ComponentTypes...>>>{})
+        , m_systemRegistry(TypeListUtils::FilterDuplicates_T<TypeList<SystemTypes...>>{})
         , m_archetypeArena()
     {}
 } // namespace Zen
