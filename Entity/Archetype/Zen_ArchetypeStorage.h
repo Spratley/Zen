@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Component/Zen_ComponentInfo.h"
+#include "../../Utils/Zen_LoopUtils.h"
 #include "../../Utils/Zen_TypeListUtils.h"
 #include "../../Zen_Types.h"
 #include "Zen_Archetype.h"
@@ -21,7 +22,7 @@ namespace Zen
         {
             SizeT bufferOffset = 0;
             SizeT const componentIndex = m_archetype.GetLocalComponentIndex<Component>();
-            for (SizeT i = 0; i < componentIndex; ++i)
+            for (auto i : LoopUtils::CountTo(componentIndex))
             {
                 bufferOffset += m_archetype.GetComponentInfo(i).m_size * m_capacity;
             }
@@ -39,22 +40,24 @@ namespace Zen
 
         struct Iterator
         {
-            constexpr Iterator(ArchetypeView& p_view, SizeT p_index = 0);
+            constexpr Iterator(ArchetypeView const& p_view, SizeT p_index = 0);
 
             // Should this return a Zen type?
             constexpr std::tuple<ViewedComponents&...> operator*() const;
             constexpr Iterator& operator++();
-            friend constexpr bool operator!=(Iterator const& p_lhs, Iterator const& p_rhs)
+            friend constexpr bool operator!=(Iterator const& /*p_lhs*/, Iterator const& /*p_rhs*/)
             {
+                return false;
+
                 // This has to be in the class because it's a dependant type
-                return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
+                //return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
             }
 
             template <typename Component>
             constexpr Component* GetBuffer() const;
 
         private:
-            ArchetypeView& m_view;
+            ArchetypeView const& m_view;
             SizeT m_index = 0;
         };
 
@@ -73,7 +76,7 @@ namespace Zen
 
     // -=-=-=-= Iterator =-=-=-=-
     template <typename... ViewedComponents>
-    constexpr ArchetypeView<ViewedComponents...>::Iterator::Iterator(ArchetypeView& p_view, SizeT p_index)
+    constexpr ArchetypeView<ViewedComponents...>::Iterator::Iterator(ArchetypeView const& p_view, SizeT p_index)
         : m_view(p_view)
         , m_index(p_index)
     {}

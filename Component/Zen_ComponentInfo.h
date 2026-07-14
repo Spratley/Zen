@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Utils/Zen_TypeUtils.h"
 #include "../Zen_Types.h"
 #include "Zen_TypelessComponentFactory.h"
 
@@ -10,23 +11,27 @@ namespace Zen
         template <typename ComponentType>
         static consteval ComponentInfo GetInfo()
         {
-            ComponentInfo info;
-            info.m_factory = TypelessComponentFactory::GetFactory<ComponentType>();
-            info.m_size = sizeof(ComponentType);
-            info.m_alignment = alignof(ComponentType);
-            return info;
+            return ComponentInfo(TypelessComponentFactory::GetFactory<ComponentType>(),
+                                 TypeUtils::HashType_V<ComponentType, U64>,
+                                 sizeof(ComponentType),
+                                 alignof(ComponentType));
         };
 
         // TODO: Remove me
         static consteval ComponentInfo GetNullInfo() { return ComponentInfo(); }
 
-        consteval ComponentInfo()
-            : m_factory(TypelessComponentFactory())
-            , m_size(0u)
-            , m_alignment(0u)
+        consteval ComponentInfo(TypelessComponentFactory p_factory = TypelessComponentFactory(),
+                                U64 p_typeHash = 0u,
+                                SizeT p_size = 0u,
+                                SizeT p_alignment = 0u)
+            : m_factory(p_factory)
+            , m_typeHash(p_typeHash)
+            , m_size(p_size)
+            , m_alignment(p_alignment)
         {}
 
         TypelessComponentFactory m_factory;
+        U64 m_typeHash;
         SizeT m_size;
         SizeT m_alignment;
     };

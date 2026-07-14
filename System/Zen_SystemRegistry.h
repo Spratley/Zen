@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../Entity/Archetype/Zen_ArchetypeArena.h"
+#include "../Entity/Archetype/Zen_ArchetypeArenaView.h"
+#include "../Entity/Archetype/Zen_ArchetypeStorage.h"
 #include "../Utils/Zen_TypeListUtils.h"
 #include "Zen_System.h"
 
@@ -16,7 +18,7 @@ namespace Zen
             : m_execute(&ExecuteSystemsImpl<SystemTypes...>)
         {}
 
-        constexpr void Execute(ArchetypeArena& p_archetypeArena) { m_execute(p_archetypeArena); }
+        constexpr void Execute(ArchetypeArena& p_archetypeArena) const { m_execute(p_archetypeArena); }
 
     private:
         template <typename SystemType>
@@ -28,7 +30,6 @@ namespace Zen
             // Loop and pass them group at a time to Execute
 
             ArchetypeArenaView<typename SystemType::ComponentList> arenaView(p_archetypeArena);
-
             for (ArchetypeStorage const& archetypeStorage : arenaView)
             {
                 SystemType::Execute(archetypeStorage);

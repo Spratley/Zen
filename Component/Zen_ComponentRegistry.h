@@ -30,7 +30,7 @@ namespace Zen
         template <typename T>
         constexpr bool IsRegistered() const
         {
-            return GetComponentIndex<T>() != std::numeric_limits<U32>::max();
+            return m_componentIndexer.IsIndexed<T>();
         }
 
         constexpr ComponentInfo GetComponentInfo(U32 p_componentIndex) const

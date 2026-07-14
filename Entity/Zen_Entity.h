@@ -1,14 +1,20 @@
 #pragma once
 
+#include "../Zen_Types.h"
+
 // Can these includes be moved or removed?
-#include <cstdint>
 #include <vector>
 
 namespace Zen
 {
     struct Entity
     {
-        enum class ID : uint32_t;
+        enum class ID : U32;
+
+        Entity(ID p_id)
+            : m_id(p_id)
+        {}
+
         ID GetID() const { return m_id; }
 
         // Gotta figure out the interface for the rest of the system
@@ -26,8 +32,8 @@ namespace Zen
 
     struct EntityKey
     {
-        Entity::ID m_index;
-        uint32_t m_archetypeIndex;
+        SizeT m_index;
+        SizeT m_archetypeIndex;
     };
 
     using EntityProxyStorage = std::vector<EntityKey>;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <limits>
 
 namespace Zen
 {
@@ -16,7 +16,16 @@ namespace Zen
 
     using SizeT = decltype(sizeof(0));
 
+    constexpr SizeT SizeT_Max = std::numeric_limits<SizeT>::max();
+
     enum class Byte : U8 {};
+
+    // TypeList is an empty object type that smuggles other types as template parameters. Originally I had used a Tuple
+    // but found myself needing to instantiate the tuple to call constructors. This way, instantiating a TypeList to
+    // call a templated constructor will always be a simple call, even if complex types are used as parameters.
+    template <typename... Types>
+    struct TypeList {};
+
 } // namespace Zen
 
 #define ZEN_VALIDATE_INT_SIZE(Bits) static_assert(sizeof(Zen::I##Bits) == sizeof(Zen::U##Bits) && sizeof(Zen::I##Bits) == (Bits / 8), #Bits " Bit Integers are Sized Wrong!");

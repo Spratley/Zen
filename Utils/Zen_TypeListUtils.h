@@ -1,18 +1,13 @@
 #pragma once
 
 #include "../Zen_Types.h"
+#include "Zen_LoopUtils.h"
+#include "Zen_TypeUtils.h"
 
 #include <type_traits>
 
 namespace Zen
 {
-    // TypeList is an empty object type that smuggles other types as template parameters. Originally I had used a Tuple
-    // but found myself needing to instantiate the tuple to call constructors. This way, instantiating a TypeList to
-    // call a templated constructor will always be a simple call, even if complex types are used as parameters.
-    template <typename... Types>
-    struct TypeList
-    {};
-
     namespace TypeListUtils
     {
         // -=-=-=-= TypeList Concat =-=-=-=-
@@ -50,12 +45,35 @@ namespace Zen
         struct IndexOf;
 
         template <typename T, typename... Types>
-        struct IndexOf<T, TypeList<T, Types...>> : std::integral_constant<SizeT, 0>
-        {};
+        struct IndexOf<T, TypeList<Types...>>
+        {
+            static consteval SizeT FindIndex()
+            {
+                /*SizeT index = 0;
+                bool found = ((std::is_same_v<T, Types> ? true : (++index, false)) || ...);
+                return found ? index : SizeT_Max;*/
+                // ^ I had this whole cool fold expression here that abused short circuit evaluation of ||,
+                // then I realized that it's consteval and an array + loop is much more readable.
+                // Keeping it around as a comment anyway for the memories... :)
 
-        template <typename T, typename U, typename... Types>
-        struct IndexOf<T, TypeList<U, Types...>> : std::integral_constant<SizeT, IndexOf<T, TypeList<Types...>>::value + 1>
-        {};
+                constexpr SizeT typeCount = sizeof...(Types);
+                if constexpr (typeCount == 0)
+                {
+                    return SizeT_Max;
+                }
+
+                constexpr bool matchesType[] = { std::is_same_v<T, Types>... };
+                for (auto index : LoopUtils::CountTo(typeCount))
+                {
+                    if (matchesType[index])
+                    {
+                        return index;
+                    }
+                }
+                return SizeT_Max;
+            }
+            static constexpr SizeT value = FindIndex();
+        };
 
         template <typename T, typename... Types>
         constexpr inline SizeT IndexOf_V = IndexOf<T, Types...>::value;
@@ -78,7 +96,8 @@ namespace Zen
         {
             static constexpr bool IsDuplicate = ContainsType_V<T, TypeList<FilteredTypes...>>;
             using Type =
-              typename FilterDuplicatesBranch<IsDuplicate, T, TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>::Type;
+              typename FilterDuplicatesBranch<IsDuplicate, T, TypeList<RemainingTypes...>, TypeList<FilteredTypes...>>::
+                Type;
         };
 
         template <typename T, typename... RemainingTypes, typename... FilteredTypes>
@@ -131,7 +150,8 @@ namespace Zen
         template <template <typename, typename> class Comparator, typename T, typename... RemainingTypes>
         struct SortTypes<Comparator, TypeList<T, RemainingTypes...>>
         {
-            using Type = typename SortTypesImpl<Comparator, TypeList<RemainingTypes...>, T, TypeList<>, TypeList<>>::Type;
+            using Type =
+              typename SortTypesImpl<Comparator, TypeList<RemainingTypes...>, T, TypeList<>, TypeList<>>::Type;
         };
 
         template <template <typename, typename> class Comparator,
@@ -151,7 +171,11 @@ namespace Zen
                   typename Pivot,
                   typename... LHSTypes,
                   typename... RHSTypes>
-        struct SortTypesImpl<Comparator, TypeList<T, RemainingTypes...>, Pivot, TypeList<LHSTypes...>, TypeList<RHSTypes...>>
+        struct SortTypesImpl<Comparator,
+                             TypeList<T, RemainingTypes...>,
+                             Pivot,
+                             TypeList<LHSTypes...>,
+                             TypeList<RHSTypes...>>
         {
             using Type = typename SortTypesBranch<Comparator,
                                                   Comparator<T, Pivot>::value,
@@ -209,12 +233,207 @@ namespace Zen
 
         // -=-=-=-= Sorting Comparators =-=-=-=-
         template <typename LHS, typename RHS>
-        struct CompareLargerAlignment
+        struct CompareECSPacking
         {
-            static constexpr bool value = alignof(LHS) > alignof(RHS);
+            static consteval bool Compare()
+            {
+                // Return the bigger alignemnt
+                if constexpr (alignof(LHS) != alignof(RHS))
+                {
+                    return alignof(LHS) > alignof(RHS);
+                }
+                // If alignment is the same, return the bigger size
+                if constexpr (sizeof(LHS) != sizeof(RHS))
+                {
+                    return sizeof(LHS) > sizeof(RHS);
+                }
+                // Just order by arbitrary hash if alignment and size are identical
+                return TypeUtils::HashType_V<LHS, U64> < TypeUtils::HashType_V<RHS, U64>;
+            }
+            static constexpr bool value = Compare();
         };
-
     } // namespace TypeListUtils
 } // namespace Zen
 
-#include "Zen_TypeListUtils_Tests.inl"
+#if defined(ZEN_ENABLE_UNIT_TEST)
+namespace Zen
+{
+    namespace TypeListUtils_Tests
+    {
+        template <int Value>
+        struct TestType
+        {
+            static constexpr int s_value = Value;
+        };
+
+        using A = TestType<1>;
+        using B = TestType<2>;
+        using C = TestType<3>;
+        using D = TestType<4>;
+
+        template <typename LHS, typename RHS>
+        struct CompareTestValue
+        {
+            static constexpr bool value = LHS::s_value < RHS::s_value;
+        };
+
+        static_assert((A::s_value < B::s_value) && (B::s_value < C::s_value) && (C::s_value < D::s_value),
+                      "Test type values must be in ascending order! Tests will erroneously fail otherwise!");
+
+        namespace TestConcat
+        {
+            using Input = TypeList<A, B>;
+            using Expected = TypeList<A, B, A, B>;
+            static_assert(std::is_same_v<TypeListUtils::Concat_T<Input, Input>, Expected>, "TypeList Concat Failed!");
+        } // namespace TestConcat
+
+        namespace TestContainsType
+        {
+            using Input = TypeList<A, B, C>;
+            static_assert(TypeListUtils::ContainsType_V<B, Input>, "TypeList Contains Type Failed to Detect Type!");
+            static_assert(!TypeListUtils::ContainsType_V<D, Input>,
+                          "TypeList Contains Type Failed to Detect Missing Type!");
+        } // namespace TestContainsType
+
+        namespace TestIndexOf
+        {
+            using Input = TypeList<A, B, C>;
+            static_assert(TypeListUtils::IndexOf_V<B, Input> == 1, "TypeList Index Of Failed!");
+        } // namespace TestIndexOf
+
+        namespace TestFilterDuplicates
+        {
+            using Input = TypeList<A, B, B, A, C, B, A>;
+            using Expected = TypeList<A, B, C>;
+            static_assert(std::is_same_v<TypeListUtils::FilterDuplicates_T<Input>, Expected>,
+                          "TypeList Filter Duplicates Failed!");
+        } // namespace TestFilterDuplicates
+
+        namespace TestSortTypes
+        {
+            using Input = TypeList<C, B, D, A>;
+            using Expected = TypeList<A, B, C, D>;
+            static_assert(std::is_same_v<TypeListUtils::SortTypes_T<CompareTestValue, Input>, Expected>,
+                          "TypeList Sort Types Failed!");
+        } // namespace TestSortTypes
+    } // namespace TypeListUtils_Tests
+} // namespace Zen
+#endif // defined(ZEN_ENABLE_UNIT_TEST)
+
+#include <iomanip> // For clean vertical column alignment
+#include <iostream>
+#include <typeinfo>
+
+  namespace ZenSandbox
+{
+    // -=-=-=-= Sandboxed Test Structs =-=-=-=-
+    struct Sandbox_Align1_Size1
+    {
+        char a;
+    };
+    struct Sandbox_Align1_Size16
+    {
+        char a[16];
+    };
+    struct Sandbox_Align4_Size4
+    {
+        int a;
+    };
+    struct Sandbox_Align4_Size12
+    {
+        int a[3];
+    };
+    struct Sandbox_Align8_Size8
+    {
+        double a;
+    };
+    struct Sandbox_Align8_Size24
+    {
+        double a[3];
+    };
+
+    struct alignas(16) Sandbox_Align16_Size16
+    {
+        float a[4];
+    };
+    struct alignas(16) Sandbox_Align16_Size32
+    {
+        float a[8];
+    };
+    struct alignas(32) Sandbox_Align32_Size32
+    {
+        int a[8];
+    };
+
+    // Tie-breakers
+    struct Sandbox_Align4_Size8_A
+    {
+        int a[2];
+    };
+    struct Sandbox_Align4_Size8_B
+    {
+        int b[2];
+    };
+    struct Sandbox_Align4_Size8_C
+    {
+        int c[2];
+    };
+
+    constexpr auto a = Zen::TypeUtils::HashType_V<Sandbox_Align4_Size8_A, Zen::U64>;
+    constexpr auto b = Zen::TypeUtils::HashType_V<Sandbox_Align4_Size8_B, Zen::U64>;
+    constexpr auto c = Zen::TypeUtils::HashType_V<Sandbox_Align4_Size8_C, Zen::U64>;
+
+    static_assert(a < c);
+
+    // -=-=-=-= The Chaos List =-=-=-=-
+    using ChaosInputList = Zen::TypeList<Sandbox_Align4_Size8_B,
+                                         Sandbox_Align1_Size1,
+                                         Sandbox_Align16_Size32,
+                                         Sandbox_Align8_Size8,
+                                         Sandbox_Align4_Size12,
+                                         Sandbox_Align32_Size32,
+                                         Sandbox_Align1_Size16,
+                                         Sandbox_Align4_Size8_C,
+                                         Sandbox_Align8_Size24,
+                                         Sandbox_Align16_Size16,
+                                         Sandbox_Align4_Size4,
+                                         Sandbox_Align4_Size8_A>;
+
+    // Reach into the Zen namespace to execute the sort
+    using SortedResultList = Zen::TypeListUtils::SortTypes_T<Zen::TypeListUtils::CompareECSPacking, ChaosInputList>;
+
+    // -=-=-=-= Safe Visualizer (Avoids MSVC Truncation) =-=-=-=-
+    template <typename T>
+    struct SandboxListPrinter;
+
+    template <typename... Types>
+    struct SandboxListPrinter<Zen::TypeList<Types...>>
+    {
+        static void Print()
+        {
+            std::cout << "=== Sorted TypeList Contents ===\n";
+            int index = 0;
+
+            auto printType = [&index](auto* dummy) {
+                using Type = std::remove_pointer_t<decltype(dummy)>;
+
+                // Fetch compile-time U64 hash value using your existing TypeUtils helper
+                constexpr Zen::U64 typeHash = Zen::TypeUtils::HashType_V<Type, Zen::U64>;
+
+                std::cout << "[" << std::setw(2) << index++ << "] "
+                          << "Align: " << std::setw(2) << alignof(Type) << " | "
+                          << "Size: " << std::setw(3) << sizeof(Type) << " | "
+                          << "Hash (Hex): 0x" << std::setfill('0') << std::setw(16) << std::hex << typeHash << " | "
+                          << "Hash (Dec): " << std::setfill(' ') << std::setw(20) << std::dec << typeHash << " | "
+                          << typeid(Type).name() << "\n";
+            };
+
+            // Fold expression to process each type sequentially
+            (printType(static_cast<Types*>(nullptr)), ...);
+            std::cout << "================================\n";
+        }
+    };
+
+    // Call this function from your main entry point to view the sorted list
+    inline void PrintSortedList() { SandboxListPrinter<SortedResultList>::Print(); }
+} // namespace ZenSandbox

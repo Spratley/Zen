@@ -1,10 +1,12 @@
 #pragma once
 
+#include "../Zen_Types.h"
+#include "Zen_LoopUtils.h"
 #include "Zen_MathUtils.h"
-#include "Zen_TypeListUtils.h"
 
 #include <array>
 #include <limits>
+#include <tuple>
 
 namespace Zen
 {
@@ -74,8 +76,9 @@ namespace Zen
                 }
 
                 constexpr auto typeHashes = std::array<U64, typeCount>{ HashType_V<Types, U64>... };
-                for (SizeT i = 0; i < (typeCount - 1); ++i)
+                for (auto i : LoopUtils::CountTo(typeCount - 1))
                 {
+                    // TODO: LoopUtils::CountTo should probably also handle cases for non-zero starting indices
                     for (SizeT j = i + 1; j < typeCount; ++j)
                     {
                         if (typeHashes[i] == typeHashes[j])
@@ -87,7 +90,7 @@ namespace Zen
                 return invalidIndex;
             }
             static constexpr SizeT violatingIndex = FindViolatingIndex();
-            
+
             static constexpr bool value = []() {
                 if constexpr (violatingIndex != invalidIndex)
                 {
@@ -116,6 +119,12 @@ namespace Zen
                 return m_getIndex(HashType_V<T, U64>);
             }
 
+            template <typename T>
+            constexpr bool IsIndexed() const
+            {
+                return m_getIndex(HashType_V<T, U64>) != std::numeric_limits<U32>::max();
+            }
+
         private:
             template <typename... Types>
             static constexpr U32 GetIndexImpl(U64 const& p_hash)
@@ -128,7 +137,7 @@ namespace Zen
                     return std::numeric_limits<U32>::max();
                 }
 
-                for (U32 i = 0; i < typeHashes.size(); ++i)
+                for (auto i : LoopUtils::CountTo(typeHashes.size()))
                 {
                     if (p_hash == typeHashes[i])
                     {

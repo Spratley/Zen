@@ -35,7 +35,7 @@ namespace Zen
     template <typename... ComponentTypes, typename... SystemTypes>
     constexpr Garden::Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
         : m_componentRegistry(
-            TypeListUtils::SortTypes_T<TypeListUtils::CompareLargerAlignment,
+            TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking,
                                        TypeListUtils::FilterDuplicates_T<TypeList<ComponentTypes...>>>{})
         , m_systemRegistry(TypeListUtils::FilterDuplicates_T<TypeList<SystemTypes...>>{})
         , m_archetypeArena()
