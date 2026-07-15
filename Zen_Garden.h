@@ -6,6 +6,7 @@
 #include "Entity/Zen_Entity.h"
 #include "System/Zen_SystemRegistry.h"
 #include "Utils/Zen_TypeListUtils.h"
+#include "Zen_Types.h"
 
 namespace Zen
 {

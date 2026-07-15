@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Entity/Archetype/Zen_ArchetypeStorage.h"
-#include "../Utils/Zen_TypeListUtils.h"
+#include "../Zen_Types.h"
 
 #include <concepts>
 #include <type_traits>
