@@ -141,7 +141,7 @@ namespace Zen
                 {
                     if (p_hash == typeHashes[i])
                     {
-                        return i;
+                        return static_cast<U32>(i);
                     }
                 }
                 return std::numeric_limits<U32>::max();

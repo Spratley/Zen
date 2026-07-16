@@ -12,10 +12,7 @@ namespace Zen
 {
     struct ArchetypeStorage
     {
-        Archetype m_archetype;
-        SizeT m_capacity;
-        SizeT m_count;
-        void* m_buffer;
+        ArchetypeStorage() = delete;
 
         template <typename Component>
         constexpr Component* GetBuffer() const
@@ -28,6 +25,16 @@ namespace Zen
             }
             return reinterpret_cast<Component*>(reinterpret_cast<SizeT>(m_buffer) + bufferOffset);
         }
+
+        constexpr void* GetEnd() const
+        {
+            return reinterpret_cast<void*>(reinterpret_cast<SizeT>(m_buffer) + (m_count * m_archetype.GetStride()));
+        }
+
+        Archetype m_archetype;
+        SizeT m_capacity;
+        SizeT m_count;
+        void* m_buffer;
     };
 
     // Warning! This assumes the ArchetypeStorage won't add or remove entities during iteration!
@@ -50,7 +57,7 @@ namespace Zen
                 return false;
 
                 // This has to be in the class because it's a dependant type
-                //return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
+                // return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
             }
 
             template <typename Component>

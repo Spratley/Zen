@@ -6,10 +6,10 @@ namespace Zen
 {
     namespace MemoryUtils
     {
-        template <typename T>
-        [[nodiscard]] constexpr inline T* PlacementNew(void* p_address)
+        template <typename T, typename... Args>
+        [[nodiscard]] constexpr inline T* PlacementNew(void* p_address, Args... p_args)
         {
-            T* result = ::new (p_address) T;
+            T* result = ::new (p_address) T(p_args...);
             return std::launder(result);
         }
     } // namespace MemoryUtils

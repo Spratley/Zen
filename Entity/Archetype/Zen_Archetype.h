@@ -33,6 +33,16 @@ namespace Zen
             return (m_localTypeIndexer.IsIndexed<Components>() && ...);
         }
 
+        constexpr SizeT GetStride() const
+        {
+            SizeT stride = 0;
+            for (auto i : LoopUtils::CountTo(m_componentCount))
+            {
+                stride += GetComponentInfo(i).m_size;
+            }
+            return stride;
+        }
+
     private:
         template <typename... Components>
         constexpr Archetype(TypeList<Components...> p_componentTypes)
@@ -70,7 +80,8 @@ namespace Zen
         template <typename... Components>
         constexpr Archetype MakeArchetype()
         {
-            using SortedComponents = TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking, TypeList<Components...>>;
+            using SortedComponents =
+              TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking, TypeList<Components...>>;
             return Archetype(SortedComponents{});
         }
     };
