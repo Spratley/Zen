@@ -13,28 +13,44 @@ namespace Zen
     struct ArchetypeStorage
     {
         ArchetypeStorage() = delete;
+        template <typename... Components>
+        ArchetypeStorage(TypeList<Components...>)
+            : m_archetype(ArchetypeFactory::MakeArchetype<Components...>())
+            , m_capacity(0)
+            , m_count(0)
+            , m_begin(nullptr)
+            , m_end(nullptr)
+        {}
 
         template <typename Component>
-        constexpr Component* GetBuffer() const
+        Component* GetBuffer() const
         {
-            SizeT bufferOffset = 0;
             SizeT const componentIndex = m_archetype.GetLocalComponentIndex<Component>();
-            for (auto i : LoopUtils::CountTo(componentIndex))
-            {
-                bufferOffset += m_archetype.GetComponentInfo(i).m_size * m_capacity;
-            }
-            return reinterpret_cast<Component*>(reinterpret_cast<SizeT>(m_buffer) + bufferOffset);
+            return static_cast<Component*>(GetBuffer(componentIndex));
         }
 
-        constexpr void* GetEnd() const
+        void* GetBuffer(SizeT p_componentIndex) const
         {
-            return reinterpret_cast<void*>(reinterpret_cast<SizeT>(m_buffer) + (m_count * m_archetype.GetStride()));
+            return CalculateBufferForCapacity(p_componentIndex, m_capacity);
         }
+
+        void* CalculateBufferForCapacity(SizeT p_componentIndex, SizeT p_capacity) const
+        {
+            SizeT bufferOffset = 0;
+            for (auto i : LoopUtils::CountTo(p_componentIndex))
+            {
+                bufferOffset += m_archetype.GetComponentInfo(i).m_size * p_capacity;
+            }
+            return static_cast<void*>(m_begin + bufferOffset);
+        }
+
+        SizeT GetAllocatedSize() const { return reinterpret_cast<SizeT>(m_end) - reinterpret_cast<SizeT>(m_begin); }
 
         Archetype m_archetype;
         SizeT m_capacity;
         SizeT m_count;
-        void* m_buffer;
+        Byte* m_begin;
+        Byte* m_end;
     };
 
     // Warning! This assumes the ArchetypeStorage won't add or remove entities during iteration!
@@ -52,12 +68,10 @@ namespace Zen
             // Should this return a Zen type?
             constexpr std::tuple<ViewedComponents&...> operator*() const;
             constexpr Iterator& operator++();
-            friend constexpr bool operator!=(Iterator const& /*p_lhs*/, Iterator const& /*p_rhs*/)
+            friend constexpr bool operator!=(Iterator const& p_lhs, Iterator const& p_rhs)
             {
-                return false;
-
                 // This has to be in the class because it's a dependant type
-                // return p_lhs.m_view != p_rhs.m_view && p_lhs.m_index != p_rhs.m_index;
+                return /*p_lhs.m_view != p_rhs.m_view ||*/ p_lhs.m_index != p_rhs.m_index;
             }
 
             template <typename Component>

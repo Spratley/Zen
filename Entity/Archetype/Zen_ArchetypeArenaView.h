@@ -18,11 +18,17 @@ namespace Zen
             constexpr Iterator(ArchetypeArena& p_source, SizeT p_archetypeIndex = 0)
                 : m_source(p_source)
                 , m_archetypeIndex(p_archetypeIndex)
-            {}
+            {
+                if (p_archetypeIndex == 0 && !ValidateArchetypeComponents())
+                {
+                    // Increment until we hit the first valid archetype
+                    this->operator++();
+                }
+            }
 
             friend constexpr bool operator!=(Iterator const& p_lhs, Iterator const& p_rhs)
             {
-                return &p_lhs.m_source != &p_rhs.m_source && p_lhs.m_archetypeIndex != p_rhs.m_archetypeIndex;
+                return &p_lhs.m_source != &p_rhs.m_source || p_lhs.m_archetypeIndex != p_rhs.m_archetypeIndex;
             }
 
             constexpr Iterator& operator++()
@@ -36,8 +42,7 @@ namespace Zen
                         break;
                     }
 
-                    ArchetypeStorage const& storage = *(*this);
-                    if (storage.m_archetype.Contains<Components...>())
+                    if (ValidateArchetypeComponents())
                     {
                         break;
                     }
@@ -45,7 +50,16 @@ namespace Zen
                 return *this;
             }
 
-            constexpr ArchetypeStorage const& operator*() { return m_source.GetArchetypeStorage(m_archetypeIndex); }
+            constexpr ArchetypeStorage const& operator*() const
+            {
+                return *const_cast<ArchetypeArena const&>(m_source).GetArchetypeStorage(m_archetypeIndex);
+            }
+
+            constexpr bool ValidateArchetypeComponents() const
+            {
+                ArchetypeStorage const& storage = *(*this);
+                return storage.m_archetype.Contains<Components...>();
+            }
 
         private:
             ArchetypeArena& m_source;

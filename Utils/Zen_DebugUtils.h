@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(ZEN_USE_ASSERTS)
+#if defined(ZEN_USE_ASSERTS) || 1
 #include <cstdlib>
 #include <intrin.h>
 #include <iostream>
@@ -20,6 +20,10 @@ namespace Zen
             {
                 std::cerr << "Error: Assertion failed in " << p_file << " on line " << p_line << "\n\"" << p_message
                           << "\"" << std::endl;
+                
+                // TODO: Make this portable
+                // And here's where I'd put my C++ 26 std::breakpoint_if_debugging
+                // IF I HAD A STABLE RELEASEs
                 __debugbreak();
                 abort();
             }

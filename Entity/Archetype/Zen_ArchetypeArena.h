@@ -7,6 +7,8 @@
 #include "Zen_Archetype.h"
 #include "Zen_ArchetypeStorage.h"
 
+#include <algorithm>
+
 #pragma warning(push)
 #pragma warning(disable : 4324)
 
@@ -20,71 +22,181 @@ namespace Zen
     class ArchetypeArena
     {
     public:
-        consteval ArchetypeArena() = default;
+        ArchetypeArena() = default;
 
-        constexpr SizeT ArchetypeCount() const { return m_archetypeCount; }
+        SizeT ArchetypeCount() const { return m_archetypeCount; }
 
-        constexpr EntityKey Spawn(Archetype const& /*p_archetype*/)
+        template <typename... Components>
+        EntityKey Spawn()
         {
-            //// Step 1: Get Archetype Storage from Archetype
-            //// Step 1.2: If Archetype is not found, push a new segment
-            // ArchetypeStorage& storage = GetArchetypeStorage(p_archetype);
-
-            //// Step 3: Check if Archetype Storage needs to grow (Count + 1 >= Capacity)
-            // if (storage.m_count + 1 >= storage.m_capacity)
-            //{
-            //     // Step 3.1: Double size of Archety Storage to increase capacity
-            //     SizeT const newCapacity = storage.m_capacity * 2;
-            //     // TODO: Actually grow the storage and bump siblings back to fit
-            // }
-
-            //// Step 4: Append new entity to Archetype Storage
-            // SizeT const entityIndex = storage.m_count;
-
-            //// Step 5: Return EntityKey object
-            // return EntityKey{ .m_index = static_cast<U32>(entityIndex), .m_archetypeIndex = archetypeIndex };
-            return EntityKey();
+            EnsureArchetype<Components...>();
+            EntityKey entity = PushEntity(ArchetypeFactory::GenerateSignature<Components...>());
+            ConstructEntity<Components...>(entity);
+            return entity;
         }
 
-    protected:
-        constexpr ArchetypeStorage const* GetArchetypeStorage(SizeT p_index) const
+        ArchetypeStorage const* GetArchetypeStorage(SizeT p_index) const
         {
             ZEN_ASSERT(p_index < m_archetypeCount, "Index out of bounds!");
-            return static_cast<ArchetypeStorage*>(m_archetypeBufferEnd) - p_index - 1;
+            return GetArchetypeStorageBuffer() - p_index;
         }
 
-        constexpr ArchetypeStorage* GetArchetypeStorage(SizeT p_index)
+    private:
+        ArchetypeStorage* GetArchetypeStorage(SizeT p_index)
         {
             return const_cast<ArchetypeStorage*>(const_cast<ArchetypeArena const*>(this)->GetArchetypeStorage(p_index));
         }
 
-    public:
-        constexpr ArchetypeStorage& PushArchetype(/*Add Params*/)
+        ArchetypeStorage* GetArchetypeStorageBuffer() const
+        {
+            return static_cast<ArchetypeStorage*>(static_cast<void*>(m_archetypeBufferEnd)) - 1;
+        }
+
+        SizeT FindArchetypeStorage(U64 p_archetypeSignature)
+        {
+            ArchetypeStorage* first = GetArchetypeStorageBuffer();
+            for (auto i : LoopUtils::CountTo(m_archetypeCount))
+            {
+                ArchetypeStorage* archetypeStorage = first - i;
+                if (archetypeStorage->m_archetype == p_archetypeSignature)
+                {
+                    return i;
+                }
+            }
+            return SizeT_Max;
+        }
+
+        template <typename... Components>
+        ArchetypeStorage& PushArchetype()
         {
             m_archetypeCount++;
             void* newArchetypeDestination = GetArchetypeStorage(m_archetypeCount - 1);
-            ArchetypeStorage* archetypeStorage = MemoryUtils::PlacementNew<ArchetypeStorage>(newArchetypeDestination);
+            ArchetypeStorage* archetypeStorage =
+              MemoryUtils::PlacementNew<ArchetypeStorage>(newArchetypeDestination, TypeList<Components...>{});
 
+            // I don't like this branch here, but PushArchetype shouldn't be called often enough to care
             if (m_archetypeCount == 1)
             {
-                archetypeStorage->m_buffer = m_archetypeBufferBegin;
+                archetypeStorage->m_begin = m_archetypeBufferBegin;
             }
             else
             {
-                // Since we're growing backwards, the saved address of the last most recent archetype will also be the
-                // address for a new buffer with size 0. As we add elements, it will grow down in addresses.
                 ArchetypeStorage* lastArchetypeStorage = GetArchetypeStorage(m_archetypeCount - 2);
-                archetypeStorage->m_buffer = lastArchetypeStorage->m_buffer;
+                archetypeStorage->m_begin = lastArchetypeStorage->m_end;
             }
+            archetypeStorage->m_end = archetypeStorage->m_begin;
 
             return *archetypeStorage;
+        }
+
+        EntityKey PushEntity(U64 p_archetypeSignature)
+        {
+            SizeT archetypeIndex = FindArchetypeStorage(p_archetypeSignature);
+            ZEN_ASSERT(archetypeIndex != SizeT_Max,
+                       "Archetype not found! Please call EnsureArchetype before you try to Spawn");
+            ArchetypeStorage& archetypeStorage = *GetArchetypeStorage(archetypeIndex);
+
+            if (archetypeStorage.m_count + 1 >= archetypeStorage.m_capacity)
+            {
+                SizeT newCapacity = (archetypeStorage.m_capacity == 0) ? 1 : archetypeStorage.m_capacity * 2;
+                AllocateSize(archetypeIndex, newCapacity);
+            }
+
+            SizeT const entityIndex = archetypeStorage.m_count++;
+            return EntityKey{ .m_index = entityIndex, .m_archetypeIndex = archetypeIndex };
+        }
+
+        template <typename... Components>
+        void EnsureArchetype()
+        {
+            if (FindArchetypeStorage(ArchetypeFactory::GenerateSignature<Components...>()) == SizeT_Max)
+            {
+                PushArchetype<Components...>();
+            }
+        }
+
+        template <typename... Components>
+        void ConstructEntity(EntityKey p_entity)
+        {
+            ArchetypeStorage const& archetypeStorage = *GetArchetypeStorage(p_entity.m_archetypeIndex);
+
+            ZEN_ASSERT(sizeof...(Components) == archetypeStorage.m_archetype.GetComponentCount(),
+                       "ConstructEntity() called with an incorrect number of components!");
+
+            (ConstructComponent<Components>(archetypeStorage, p_entity.m_index), ...);
+        }
+
+        template <typename Component>
+        Component* ConstructComponent(ArchetypeStorage const& p_archetypeStorage, SizeT p_entityIndex)
+        {
+            Component* buffer = p_archetypeStorage.GetBuffer<Component>();
+            return MemoryUtils::PlacementNew<Component>(buffer + p_entityIndex /*, args*/);
+        }
+
+        bool AllocateSize(SizeT p_archetypeIndex, SizeT p_entityCount)
+        {
+            ZEN_ASSERT(p_archetypeIndex < m_archetypeCount, "Index out of bounds!");
+
+            ArchetypeStorage* archetypeStorage = GetArchetypeStorage(p_archetypeIndex);
+            if (archetypeStorage->m_capacity > p_entityCount)
+            {
+                // We already have enough space, no alloc needed :)
+                return true;
+            }
+
+            SizeT newSizeBytes = archetypeStorage->m_archetype.GetStride() * p_entityCount;
+            // Pad up to the nearest 16 byte boundary
+            newSizeBytes = (newSizeBytes + 15) & ~15;
+
+            // TODO: Validate that we're not overrunning the arena by doing this!
+
+            SizeT const allocatedSize = archetypeStorage->GetAllocatedSize();
+            ZEN_ASSERT(newSizeBytes >= allocatedSize, "Somehow we're shrinking the buffer! Something's gone wrong");
+            if (newSizeBytes == allocatedSize)
+            {
+                return true;
+            }
+
+            // Bump buffers in front by the space needed
+            SizeT additionalSpaceNeeded = newSizeBytes - allocatedSize;
+            for (SizeT i = m_archetypeCount - 1; i > p_archetypeIndex; --i)
+            {
+                ArchetypeStorage* archetypeToMove = GetArchetypeStorage(i);
+
+                Byte* const begin = archetypeToMove->m_begin;
+                Byte* const end = archetypeToMove->m_end;
+                Byte* const newEnd = end + additionalSpaceNeeded;
+                std::copy_backward(begin, end, newEnd);
+
+                archetypeToMove->m_begin = begin + additionalSpaceNeeded;
+                archetypeToMove->m_end = newEnd;
+            }
+
+            archetypeStorage->m_end = archetypeStorage->m_end + additionalSpaceNeeded;
+            SizeT const oldCapacity = archetypeStorage->m_capacity;
+            archetypeStorage->m_capacity = p_entityCount;
+
+            // TODO: Move to better home
+            // Move existing component buffers to new buffer locations
+            for (SizeT i = archetypeStorage->m_archetype.GetComponentCount() - 1; i > 0; --i)
+            {
+                Byte* oldComponentBuffer =
+                  static_cast<Byte*>(archetypeStorage->CalculateBufferForCapacity(i, oldCapacity));
+                SizeT oldBufferSize = archetypeStorage->m_archetype.GetComponentInfo(i).m_size * oldCapacity;
+                Byte* newComponentBuffer = static_cast<Byte*>(archetypeStorage->GetBuffer(i));
+
+                std::copy_backward(oldComponentBuffer,
+                                   oldComponentBuffer + oldBufferSize,
+                                   newComponentBuffer + oldBufferSize);
+            }
+            return true;
         }
 
     protected:
         SizeT m_archetypeCount = 0;
         SizeT m_usedSize = 0;
-        void* m_archetypeBufferBegin = nullptr;
-        void* m_archetypeBufferEnd = nullptr;
+        Byte* m_archetypeBufferBegin = nullptr;
+        Byte* m_archetypeBufferEnd = nullptr;
     };
 
     // I have separated this out into another class to get around
@@ -94,14 +206,15 @@ namespace Zen
     class SizedArchetypeArena : public ArchetypeArena
     {
     public:
-        consteval SizedArchetypeArena()
+        SizedArchetypeArena()
             : ArchetypeArena()
             , m_arena{}
         {
-            m_archetypeBufferBegin = static_cast<void*>(m_arena);
-            m_archetypeBufferEnd = static_cast<void*>(m_arena + ArenaSizeBytes);
+            m_archetypeBufferBegin = m_arena;
+            m_archetypeBufferEnd = m_arena + ArenaSizeBytes;
 
-            static_assert((ArenaSizeBytes % 16) == 0, "Arena Size must be a multiple of 16 bytes to preserve array layout!");
+            static_assert((ArenaSizeBytes % 16) == 0,
+                          "Arena Size must be a multiple of 16 bytes to preserve array layout!");
         }
 
     private:

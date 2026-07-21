@@ -15,8 +15,11 @@ namespace Zen
     using U64 = unsigned long long int;
 
     using SizeT = decltype(sizeof(0));
-
     constexpr SizeT SizeT_Max = std::numeric_limits<SizeT>::max();
+    static_assert(sizeof(SizeT) >= sizeof(void*),
+                  "For whatever reason, SizeT is not big enough to store a pointer in your program! This will cause "
+                  "problems with Zen, please reach out to Spratley and he'll fix this. Until someone hits this assert "
+                  "though, we're rocking SizeT for pointer math! (cool monkey emoji)");
 
     enum class Byte : U8 {};
 

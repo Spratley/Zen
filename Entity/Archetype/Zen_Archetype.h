@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../Component/Zen_ComponentInfo.h"
+#include "../../Utils/Zen_DebugUtils.h"
+#include "../../Utils/Zen_LoopUtils.h"
 #include "../../Utils/Zen_TypeListUtils.h"
 #include "../../Utils/Zen_TypeUtils.h"
 #include "../../Zen_Types.h"
@@ -18,6 +20,7 @@ namespace Zen
 
         constexpr ComponentInfo const& GetComponentInfo(SizeT p_componentIndex) const
         {
+            ZEN_ASSERT(p_componentIndex < m_componentCount, "GetComponentInfo called out of bounds!");
             return m_getComponentInfo(p_componentIndex);
         }
 
@@ -43,46 +46,53 @@ namespace Zen
             return stride;
         }
 
+        SizeT GetComponentCount() const { return m_componentCount; }
+
+        friend constexpr bool operator==(Archetype const& p_archetype, U64 const& p_signature)
+        {
+            return p_archetype.m_signature == p_signature;
+        }
+
     private:
         template <typename... Components>
-        constexpr Archetype(TypeList<Components...> p_componentTypes)
+        constexpr Archetype(TypeList<Components...> p_componentTypes, U64 p_signature)
             : m_getComponentInfo(&GetComponentInfoImpl<Components...>)
             , m_localTypeIndexer(p_componentTypes)
-            , m_signature(GenerateSignature<Components...>())
-            , m_componentCount(static_cast<U32>(sizeof...(Components)))
+            , m_signature(p_signature)
+            , m_componentCount(sizeof...(Components))
         {}
 
         template <typename... Components>
         static constexpr ComponentInfo const& GetComponentInfoImpl(SizeT p_componentIndex)
         {
-            constexpr std::array<ComponentInfo, sizeof...(Components)> componentInfos = {
+            static constexpr std::array<ComponentInfo, sizeof...(Components)> componentInfos = {
                 ComponentInfo::GetInfo<Components>()...
             };
             return componentInfos[p_componentIndex];
-        }
-
-        template <typename... Components>
-        static constexpr U64 GenerateSignature()
-        {
-            return (TypeUtils::HashType_V<Components>() ^ ...);
         }
 
     private:
         ComponentInfo const& (*m_getComponentInfo)(SizeT p_componentIndex);
         TypeUtils::TypeIndexer m_localTypeIndexer;
         U64 m_signature;
-        U32 m_componentCount;
+        SizeT m_componentCount;
     };
 
     class ArchetypeFactory
     {
     public:
         template <typename... Components>
-        constexpr Archetype MakeArchetype()
+        static constexpr Archetype MakeArchetype()
         {
             using SortedComponents =
               TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking, TypeList<Components...>>;
-            return Archetype(SortedComponents{});
+            return Archetype(SortedComponents{}, GenerateSignature<Components...>());
+        }
+
+        template <typename... Components>
+        static constexpr U64 GenerateSignature()
+        {
+            return (TypeUtils::HashType_V<Components, U64> ^ ...);
         }
     };
 } // namespace Zen

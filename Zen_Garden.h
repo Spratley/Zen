@@ -21,9 +21,9 @@ namespace Zen
         constexpr void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
 
         template <typename... Components>
-        constexpr Entity Spawn(Components const&... /*p_components*/)
+        constexpr EntityKey Spawn(Components const&... /*p_components*/)
         {
-            return m_archetypeArena.Spawn(Archetype(TypeList<Components...>{}));
+            return m_archetypeArena.Spawn<Components...>();
         }
 
     private:
