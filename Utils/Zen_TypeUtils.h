@@ -22,12 +22,12 @@ namespace Zen
         {
 #ifdef _MSC_VER
             return __FUNCSIG__;
-#elifndef __PRETTY_FUNCTION__
-            static_assert(false,
-                          "__PRETTY_FUNCTION__ not available in your compiler! Please provide a utility to access the "
-                          "function signature including template arguments to keep Zen working!");
-#else
+#elif defined(__GNUC__) || defined(__clang__)
             return __PRETTY_FUNCTION__;
+#else
+            static_assert(false,
+                          "Decorated function signature not available in your compiler! Please provide a utility to "
+                          "access the function signature including template arguments to keep Zen working!");
 #endif
         }
 
