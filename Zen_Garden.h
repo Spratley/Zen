@@ -38,7 +38,7 @@ namespace Zen
     };
 
     template <typename... ComponentTypes, typename... SystemTypes>
-    constexpr Garden::Garden(SizeT p_arenaSizeBytes, TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
+    constexpr Garden::Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
         : m_componentRegistry(
             TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking,
                                        TypeListUtils::FilterDuplicates_T<TypeList<ComponentTypes...>>>{})
