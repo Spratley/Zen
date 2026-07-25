@@ -1,10 +1,6 @@
 #include "Zen_ArchetypeArena.h"
 
-#include "../../Entity/Zen_Entity.h"
-#include "../../Utils/Zen_DebugUtils.h"
 #include "../../Utils/Zen_LoopUtils.h"
-#include "../../Zen_Types.h"
-#include "Zen_ArchetypeStorage.h"
 
 #include <algorithm>
 #include <malloc.h>
@@ -57,7 +53,10 @@ namespace Zen
         if (archetypeStorage.m_count + 1 >= archetypeStorage.m_capacity)
         {
             SizeT newCapacity = (archetypeStorage.m_capacity == 0) ? 1 : archetypeStorage.m_capacity * 2;
-            AllocateArchetypeSize(archetypeIndex, newCapacity);
+            if (!AllocateArchetypeSize(archetypeIndex, newCapacity))
+            {
+                return EntityKey{ SizeT_Max, SizeT_Max };
+            }
         }
 
         SizeT const entityIndex = archetypeStorage.m_count++;
@@ -75,21 +74,26 @@ namespace Zen
             return true;
         }
 
-        SizeT newSizeBytes = archetypeStorage->m_archetype.GetStride() * p_entityCount;
-        // Pad up to the nearest 16 byte boundary
-        newSizeBytes = (newSizeBytes + 15) & ~15;
-
-        // TODO: Validate that we're not overrunning the arena by doing this!
+        SizeT const archetypeStride = archetypeStorage->m_archetype.GetStride();
+        SizeT newSizeBytes = p_entityCount * archetypeStride;
+        newSizeBytes = (newSizeBytes + 15) & ~15; // Pad up to the nearest 16 byte boundary
 
         SizeT const allocatedSize = archetypeStorage->GetAllocatedSize();
         ZEN_ASSERT(newSizeBytes >= allocatedSize, "Somehow we're shrinking the buffer! Something's gone wrong");
         if (newSizeBytes == allocatedSize)
         {
+            archetypeStorage->m_capacity = p_entityCount;
             return true;
         }
 
+        SizeT const additionalSpaceNeeded = newSizeBytes - allocatedSize;
+        if (!ValidateBufferOverrun(m_usedSizeBytes + additionalSpaceNeeded))
+        {
+            ZEN_ASSERT(false, "Too many entities spawned! Buffer overrun!");
+            return false;
+        }
+
         // Bump buffers in front by the space needed
-        SizeT additionalSpaceNeeded = newSizeBytes - allocatedSize;
         for (SizeT i = m_archetypeCount - 1; i > p_archetypeIndex; --i)
         {
             ArchetypeStorage* archetypeToMove = GetArchetypeStorage(i);
@@ -119,7 +123,18 @@ namespace Zen
                                oldComponentBuffer + oldBufferSize,
                                newComponentBuffer + oldBufferSize);
         }
+
+        m_usedSizeBytes += additionalSpaceNeeded;
         return true;
+    }
+
+    bool ArchetypeArena::ValidateBufferOverrun(SizeT p_lowerBound) const
+    {
+        // Calculate the maximum size in bytes that is available before the archetype metadata stack is corrupted
+        SizeT upperBound = reinterpret_cast<SizeT>(m_archetypeStorageBuffer);
+        upperBound -= sizeof(ArchetypeStorage) * m_archetypeCount;
+        upperBound -= reinterpret_cast<SizeT>(m_archetypeBufferBegin);
+        return p_lowerBound < upperBound;
     }
 
 } // namespace Zen

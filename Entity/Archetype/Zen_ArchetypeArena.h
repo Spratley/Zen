@@ -4,7 +4,6 @@
 #include "../../Utils/Zen_MemoryUtils.h"
 #include "../../Zen_Types.h"
 #include "../Zen_Entity.h"
-#include "Zen_Archetype.h"
 #include "Zen_ArchetypeStorage.h"
 
 // I'd like to come back to this and split up with single responsibility in mind
@@ -54,10 +53,12 @@ namespace Zen
 
         bool AllocateArchetypeSize(SizeT p_archetypeIndex, SizeT p_entityCount);
 
+        bool ValidateBufferOverrun(SizeT p_lowerBound) const;
+
     private:
         SizeT m_archetypeCount = 0;
+        SizeT m_usedSizeBytes= 0;
         Byte* m_archetypeBufferBegin = nullptr;
-        //Byte* m_archetypeBufferEnd = nullptr;
         ArchetypeStorage* m_archetypeStorageBuffer = nullptr;
     };
 
