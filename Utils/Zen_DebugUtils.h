@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(ZEN_USE_ASSERTS) || 1
+#if defined(ZEN_USE_ASSERTS)
 #include <cstdlib>
 #include <intrin.h>
 #include <iostream>

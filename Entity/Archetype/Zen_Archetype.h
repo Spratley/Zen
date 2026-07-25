@@ -90,7 +90,7 @@ namespace Zen
         }
 
         template <typename... Components>
-        static constexpr U64 GenerateSignature()
+        static consteval U64 GenerateSignature()
         {
             return (TypeUtils::HashType_V<Components, U64> ^ ...);
         }

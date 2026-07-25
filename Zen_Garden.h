@@ -30,7 +30,7 @@ namespace Zen
         EntityProxyStorage m_entities;
         ComponentRegistry m_componentRegistry;
         SystemRegistry m_systemRegistry;
-        SizedArchetypeArena<1024> m_archetypeArena;
+        ArchetypeArena m_archetypeArena;
     };
 
     template <typename... ComponentTypes, typename... SystemTypes>
@@ -40,5 +40,7 @@ namespace Zen
                                        TypeListUtils::FilterDuplicates_T<TypeList<ComponentTypes...>>>{})
         , m_systemRegistry(TypeListUtils::FilterDuplicates_T<TypeList<SystemTypes...>>{})
         , m_archetypeArena()
-    {}
+    {
+        m_archetypeArena.Initialize(1024);
+    }
 } // namespace Zen
