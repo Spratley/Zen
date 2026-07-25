@@ -9,7 +9,7 @@ namespace Zen
 {
     struct Entity
     {
-        enum class ID : U32;
+        enum class ID : SizeT;
 
         Entity(ID p_id)
             : m_id(p_id)

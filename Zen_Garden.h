@@ -18,12 +18,16 @@ namespace Zen
         template <typename... ComponentTypes, typename... SystemTypes>
         constexpr Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>);
 
-        constexpr void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
+        void Initialize(SizeT p_arenaSizeBytes) { m_archetypeArena.Initialize(p_arenaSizeBytes); }
+
+        void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
 
         template <typename... Components>
-        constexpr EntityKey Spawn(Components const&... /*p_components*/)
+        constexpr Entity Spawn(Components const&... /*p_components*/)
         {
-            return m_archetypeArena.Spawn<Components...>();
+            EntityKey entityKey = m_archetypeArena.Spawn<Components...>();
+            m_entities.push_back(entityKey);
+            return m_entities.size() - 1;
         }
 
     private:
@@ -34,13 +38,11 @@ namespace Zen
     };
 
     template <typename... ComponentTypes, typename... SystemTypes>
-    constexpr Garden::Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
+    constexpr Garden::Garden(SizeT p_arenaSizeBytes, TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
         : m_componentRegistry(
             TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking,
                                        TypeListUtils::FilterDuplicates_T<TypeList<ComponentTypes...>>>{})
         , m_systemRegistry(TypeListUtils::FilterDuplicates_T<TypeList<SystemTypes...>>{})
         , m_archetypeArena()
-    {
-        m_archetypeArena.Initialize(1024);
-    }
+    {}
 } // namespace Zen

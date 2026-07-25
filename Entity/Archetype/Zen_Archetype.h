@@ -36,7 +36,7 @@ namespace Zen
             return (m_localTypeIndexer.IsIndexed<Components>() && ...);
         }
 
-        constexpr SizeT GetStride() const
+        constexpr SizeT CalculateStride() const
         {
             SizeT stride = 0;
             for (auto i : LoopUtils::CountTo(m_componentCount))

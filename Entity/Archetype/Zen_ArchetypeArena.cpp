@@ -74,7 +74,7 @@ namespace Zen
             return true;
         }
 
-        SizeT const archetypeStride = archetypeStorage->m_archetype.GetStride();
+        SizeT const archetypeStride = archetypeStorage->m_archetype.CalculateStride();
         SizeT newSizeBytes = p_entityCount * archetypeStride;
         newSizeBytes = (newSizeBytes + 15) & ~15; // Pad up to the nearest 16 byte boundary
 
