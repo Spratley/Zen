@@ -33,6 +33,18 @@ namespace Zen
 
         ArchetypeStorage const* GetArchetypeStorage(SizeT p_index) const;
 
+        template <typename Component>
+        Component* GetComponent(EntityKey p_entityKey)
+        {
+            ArchetypeStorage* archetypeStorage = GetArchetypeStorage(p_entityKey.m_archetypeIndex);
+            if (!archetypeStorage || p_entityKey.m_index >= archetypeStorage->m_count)
+            {
+                return nullptr;
+            }
+
+            return &archetypeStorage->GetBuffer<Component>()[p_entityKey.m_index];
+        }
+
     private:
         ArchetypeStorage* GetArchetypeStorage(SizeT p_index);
 
@@ -57,7 +69,7 @@ namespace Zen
 
     private:
         SizeT m_archetypeCount = 0;
-        SizeT m_usedSizeBytes= 0;
+        SizeT m_usedSizeBytes = 0;
         Byte* m_archetypeBufferBegin = nullptr;
         ArchetypeStorage* m_archetypeStorageBuffer = nullptr;
     };

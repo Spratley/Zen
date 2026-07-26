@@ -3,7 +3,7 @@
 #include "../Entity/Archetype/Zen_ArchetypeArena.h"
 #include "../Entity/Archetype/Zen_ArchetypeArenaView.h"
 #include "../Entity/Archetype/Zen_ArchetypeStorage.h"
-#include "../Utils/Zen_TypeListUtils.h"
+#include "../Zen_Types.h"
 #include "Zen_System.h"
 
 namespace Zen

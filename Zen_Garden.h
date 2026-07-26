@@ -4,6 +4,7 @@
 #include "Entity/Archetype/Zen_Archetype.h"
 #include "Entity/Archetype/Zen_ArchetypeArena.h"
 #include "Entity/Zen_Entity.h"
+#include "Entity/Zen_EntityView.h"
 #include "System/Zen_SystemRegistry.h"
 #include "Utils/Zen_TypeListUtils.h"
 #include "Zen_Types.h"
@@ -27,7 +28,20 @@ namespace Zen
         {
             EntityKey entityKey = m_archetypeArena.Spawn<Components...>();
             m_entities.push_back(entityKey);
-            return m_entities.size() - 1;
+            return Entity(Entity::ID(m_entities.size() - 1), this);
+        }
+
+        // This should live somewhere else
+        template <typename Component>
+        Component* GetComponent(Entity const& p_entity)
+        {
+            return m_archetypeArena.GetComponent<Component>(m_entities[static_cast<SizeT>(p_entity.GetID())]);
+        }
+
+        template <typename... Components>
+        EntityView<Components...> ViewComponents() const
+        {
+            return EntityView<Components...>(m_archetypeArena);
         }
 
     private:
@@ -45,4 +59,11 @@ namespace Zen
         , m_systemRegistry(TypeListUtils::FilterDuplicates_T<TypeList<SystemTypes...>>{})
         , m_archetypeArena()
     {}
+
+    // TODO: Huh?
+    template <typename Component>
+    Component* Entity::GetComponent() const
+    {
+        return m_garden->GetComponent<Component>(*this);
+    }
 } // namespace Zen
