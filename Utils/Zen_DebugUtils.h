@@ -23,7 +23,7 @@ namespace Zen
                 
                 // TODO: Make this portable
                 // And here's where I'd put my C++ 26 std::breakpoint_if_debugging
-                // IF I HAD A STABLE RELEASEs
+                // IF I HAD A STABLE RELEASE
                 __debugbreak();
                 abort();
             }
