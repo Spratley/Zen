@@ -18,7 +18,7 @@ namespace Zen
         // Note: Doesn't return the name of T, just a string that is unqiue for T
         // Used for hashing, but feel free to also use otherwise if for some reason you need to?
         template <typename T>
-        consteval const char* GetUniqueTypeString()
+        consteval char const* GetUniqueTypeString()
         {
 #ifdef _MSC_VER
             return __FUNCSIG__;

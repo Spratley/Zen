@@ -12,7 +12,7 @@ namespace Zen
         constexpr inline U64 FNV64_Base = 0xCBF29CE484222325;
         constexpr inline U64 FNV64_Prime = 0x100000001B3;
 
-        constexpr U32 HashFNV1A32(const char* p_str)
+        constexpr U32 HashFNV1A32(char const* p_str)
         {
             U32 hash = FNV32_Base;
             while (*p_str)
@@ -23,7 +23,7 @@ namespace Zen
             return hash;
         }
 
-        constexpr U64 HashFNV1A64(const char* p_str)
+        constexpr U64 HashFNV1A64(char const* p_str)
         {
             U64 hash = FNV64_Base;
             while (*p_str)
