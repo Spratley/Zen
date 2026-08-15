@@ -1,16 +1,15 @@
 #pragma once
 
-#include <new>
+#include <memory>
 
 namespace Zen
 {
     namespace MemoryUtils
     {
         template <typename T, typename... Args>
-        [[nodiscard]] inline T* PlacementNew(void* p_address, Args... p_args)
+        [[nodiscard]] constexpr T* PlacementNew(T* p_address, Args&&... p_args)
         {
-            T* result = ::new (p_address) T(p_args...);
-            return std::launder(result);
+            return std::construct_at<T, Args...>(p_address, std::forward<Args>(p_args)...);
         }
     } // namespace MemoryUtils
 } // namespace Zen

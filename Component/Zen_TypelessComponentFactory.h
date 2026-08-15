@@ -19,7 +19,7 @@ namespace Zen
         static consteval TypelessComponentFactory GetFactory()
         {
             return TypelessComponentFactory([](void* p_address) -> void* {
-                return static_cast<void*>(MemoryUtils::PlacementNew<ComponentType>(p_address));
+                return static_cast<void*>(MemoryUtils::PlacementNew<ComponentType>(static_cast<ComponentType*>(p_address)));
             });
         }
 

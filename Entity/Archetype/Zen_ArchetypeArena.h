@@ -114,9 +114,9 @@ namespace Zen
     ArchetypeStorage& ArchetypeArena::PushArchetype()
     {
         m_archetypeCount++;
-        void* newArchetypeDestination = GetArchetypeStorage(m_archetypeCount - 1);
         ArchetypeStorage* archetypeStorage =
-          MemoryUtils::PlacementNew<ArchetypeStorage>(newArchetypeDestination, TypeList<Components...>{});
+          MemoryUtils::PlacementNew<ArchetypeStorage>(GetArchetypeStorage(m_archetypeCount - 1),
+                                                      TypeList<Components...>{});
 
         // I don't like this branch here, but PushArchetype shouldn't be called often enough to care
         if (m_archetypeCount == 1)
