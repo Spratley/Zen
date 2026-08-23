@@ -23,6 +23,12 @@ namespace Zen
 
         void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
 
+        template <typename... Components>
+        constexpr Entity Spawn() 
+        { 
+            return Spawn(Components{}...);
+        }
+
         // This shouldn't be copying, this should be &&s
         template <typename... Components>
         constexpr Entity Spawn(Components const&... /*p_components*/)
