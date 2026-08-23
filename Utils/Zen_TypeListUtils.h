@@ -29,6 +29,19 @@ namespace Zen
         template <typename... TypeLists>
         using Concat_T = typename Concat<TypeLists...>::Type;
 
+        // -=-=-=-= Get First =-=-=-=-
+        template <typename Types>
+        struct GetFirst;
+
+        template <typename FirstType, typename... RemainingTypes>
+        struct GetFirst<TypeList<FirstType, RemainingTypes...>>
+        {
+            using Type = FirstType;
+        };
+
+        template <typename Types>
+        using GetFirst_T = typename GetFirst<Types>::Type;
+
         // -=-=-=-= Contains Type =-=-=-=-
         template <typename T, typename Types>
         struct ContainsType;
@@ -286,6 +299,13 @@ namespace Zen
             using Expected = TypeList<A, B, A, B>;
             static_assert(std::is_same_v<TypeListUtils::Concat_T<Input, Input>, Expected>, "TypeList Concat Failed!");
         } // namespace TestConcat
+
+        namespace TestGetFirst
+        {
+            using Input = TypeList<A, B, C>;
+            using Expected = A;
+            static_assert(std::is_same_v<TypeListUtils::GetFirst_T<Input>, Expected>, "Get First Failed!");
+        } // namespace TestGetFirst
 
         namespace TestContainsType
         {

@@ -62,8 +62,15 @@ namespace Zen
             }
 
             constexpr std::tuple<Components&...> operator*() const
+            requires(sizeof...(Components) > 1)
             {
                 return std::tie<Components&...>(GetBuffer<Components>()[m_entityIndex]...);
+            }
+
+            constexpr Zen::TypeListUtils::GetFirst_T<TypeList<Components...>>& operator*() const
+            requires(sizeof...(Components) == 1)
+            {
+                return GetBuffer<Zen::TypeListUtils::GetFirst_T<TypeList<Components...>>>()[m_entityIndex];
             }
 
             constexpr bool ValidateArchetypeComponents() const
