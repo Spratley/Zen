@@ -132,6 +132,12 @@ namespace Zen
             : m_source(p_source)
         {}
 
+        YK_SizeT CountU() const
+        {
+            // TODO: Fill
+            return 0;
+        }
+
         constexpr Iterator begin() const { return Iterator(m_source); }
         constexpr Iterator end() const { return Iterator::GetEndIterator(m_source); }
 
