@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Component/Zen_ComponentRegistry.h"
-#include "Entity/Archetype/Zen_Archetype.h"
 #include "Entity/Archetype/Zen_ArchetypeArena.h"
 #include "Entity/Zen_Entity.h"
 #include "Entity/Zen_EntityView.h"
@@ -18,25 +17,14 @@ namespace Zen
     public:
         template <typename... ComponentTypes, typename... SystemTypes>
         constexpr Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>);
-
         void Initialize(SizeT p_arenaSizeBytes) { m_archetypeArena.Initialize(p_arenaSizeBytes); }
 
-        void Tick(/*Delta Time?*/) { m_systemRegistry.Execute(m_archetypeArena); }
+        void Tick() { m_systemRegistry.Execute(m_archetypeArena); }
 
         template <typename... Components>
-        constexpr Entity Spawn() 
-        { 
-            return Spawn(Components{}...);
-        }
-
-        // This shouldn't be copying, this should be &&s
+        constexpr Entity Spawn();
         template <typename... Components>
-        constexpr Entity Spawn(Components const&... /*p_components*/)
-        {
-            EntityKey entityKey = m_archetypeArena.Spawn<Components...>();
-            m_entities.push_back(entityKey);
-            return Entity(Entity::ID(m_entities.size() - 1), this);
-        }
+        constexpr Entity Spawn(Components&&... p_components);
 
         // This should live somewhere else
         template <typename Component>
@@ -67,7 +55,22 @@ namespace Zen
         , m_archetypeArena()
     {}
 
-    // TODO: Huh?
+    template <typename... Components>
+    constexpr Entity Garden::Spawn()
+    {
+        return Spawn(Components{}...);
+    }
+
+    template <typename... Components>
+    constexpr Entity Garden::Spawn(Components&&... p_components)
+    {
+        EntityKey entityKey = m_archetypeArena.Spawn<Components...>(std::forward<Components>(p_components)...);
+        m_entities.push_back(entityKey);
+        return Entity(Entity::ID(m_entities.size() - 1), this);
+    }
+
+    // TODO: This is here so that it knows about m_garden->GetComponent() instead of in the actual Entity code
+    // It NEEDS to be relocated
     template <typename Component>
     Component* Entity::GetComponent() const
     {

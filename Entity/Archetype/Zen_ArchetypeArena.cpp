@@ -1,6 +1,10 @@
 #include "Zen_ArchetypeArena.h"
 
+#include "../../Entity/Zen_Entity.h"
+#include "../../Utils/Zen_DebugUtils.h"
 #include "../../Utils/Zen_LoopUtils.h"
+#include "../../Zen_Types.h"
+#include "Zen_ArchetypeStorage.h"
 
 #include <algorithm>
 #include <malloc.h>

@@ -4,7 +4,10 @@
 #include "../../Utils/Zen_MemoryUtils.h"
 #include "../../Zen_Types.h"
 #include "../Zen_Entity.h"
+#include "Zen_Archetype.h"
 #include "Zen_ArchetypeStorage.h"
+
+#include <type_traits>
 
 // I'd like to come back to this and split up with single responsibility in mind
 // Right now ArchetypeArena allocates, distributes, and constructs
@@ -29,7 +32,7 @@ namespace Zen
         SizeT ArchetypeCount() const { return m_archetypeCount; }
 
         template <typename... Components>
-        EntityKey Spawn();
+        EntityKey Spawn(Components&&... p_components);
 
         ArchetypeStorage const* GetArchetypeStorage(SizeT p_index) const;
 
@@ -51,11 +54,13 @@ namespace Zen
         SizeT FindArchetypeStorage(U64 p_archetypeSignature) const;
 
         template <typename... Components>
-        void ConstructEntity(EntityKey p_entity);
+        void ConstructEntity(EntityKey p_entity, Components&&... p_components);
         EntityKey PushEntity(U64 p_archetypeSignature);
 
         template <typename Component>
-        Component* ConstructComponent(ArchetypeStorage const& p_archetypeStorage, SizeT p_entityIndex);
+        std::remove_cvref_t<Component>* ConstructComponent(ArchetypeStorage const& p_archetypeStorage,
+                                                           SizeT p_entityIndex,
+                                                           Component&& p_component);
 
         template <typename... Components>
         void EnsureArchetype();
@@ -75,30 +80,34 @@ namespace Zen
     };
 
     template <typename... Components>
-    EntityKey ArchetypeArena::Spawn()
+    EntityKey ArchetypeArena::Spawn(Components&&... p_components)
     {
-        EnsureArchetype<Components...>();
-        EntityKey entity = PushEntity(ArchetypeFactory::GenerateSignature<Components...>());
-        ConstructEntity<Components...>(entity);
+        EnsureArchetype<std::remove_cvref_t<Components>...>();
+        EntityKey entity = PushEntity(ArchetypeFactory::GenerateSignature<std::remove_cvref_t<Components>...>());
+        ConstructEntity<Components...>(entity, std::forward<Components>(p_components)...);
         return entity;
     }
 
     template <typename... Components>
-    void ArchetypeArena::ConstructEntity(EntityKey p_entity)
+    void ArchetypeArena::ConstructEntity(EntityKey p_entity, Components&&... p_components)
     {
         ArchetypeStorage const& archetypeStorage = *GetArchetypeStorage(p_entity.m_archetypeIndex);
 
         ZEN_ASSERT(sizeof...(Components) == archetypeStorage.m_archetype.GetComponentCount(),
                    "ConstructEntity() called with an incorrect number of components!");
 
-        (ConstructComponent<Components>(archetypeStorage, p_entity.m_index), ...);
+        (ConstructComponent<Components>(archetypeStorage, p_entity.m_index, std::forward<Components>(p_components)),
+         ...);
     }
 
     template <typename Component>
-    Component* ArchetypeArena::ConstructComponent(ArchetypeStorage const& p_archetypeStorage, SizeT p_entityIndex)
+    std::remove_cvref_t<Component>* ArchetypeArena::ConstructComponent(ArchetypeStorage const& p_archetypeStorage,
+                                                                       SizeT p_entityIndex,
+                                                                       Component&& p_component)
     {
-        Component* buffer = p_archetypeStorage.GetBuffer<Component>();
-        return MemoryUtils::PlacementNew<Component>(buffer + p_entityIndex /*, args*/);
+        using ComponentType = std::remove_cvref_t<Component>;
+        ComponentType* buffer = p_archetypeStorage.GetBuffer<ComponentType>();
+        return MemoryUtils::PlacementNew<ComponentType>(buffer + p_entityIndex, std::forward<Component>(p_component));
     }
 
     template <typename... Components>
