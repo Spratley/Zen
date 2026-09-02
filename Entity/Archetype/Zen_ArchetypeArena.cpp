@@ -9,7 +9,7 @@
 #include "Zen_ArchetypeStorage.h"
 
 #include <algorithm>
-#include <malloc.h>
+#include <cstdlib>
 
 namespace Zen
 {
