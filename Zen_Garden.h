@@ -5,8 +5,11 @@
 #include "Entity/Zen_Entity.h"
 #include "Entity/Zen_EntityView.h"
 #include "System/Zen_SystemRegistry.h"
+#include "Utils/Zen_ConceptUtils.h"
 #include "Utils/Zen_TypeListUtils.h"
 #include "Zen_Types.h"
+
+#include <vector>
 
 namespace Zen
 {
@@ -14,39 +17,57 @@ namespace Zen
 
     class Garden
     {
+        friend struct Entity;
+
     public:
         template <typename... ComponentTypes, typename... SystemTypes>
+        requires((ConceptUtils::IsPureType<ComponentTypes> && ...) && (ConceptUtils::IsPureType<SystemTypes> && ...))
         constexpr Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>);
+
         void Initialize(SizeT p_arenaSizeBytes) { m_archetypeArena.Initialize(p_arenaSizeBytes); }
 
         void Tick() { m_systemRegistry.Execute(m_archetypeArena); }
 
         template <typename... Components>
+        requires(ConceptUtils::IsPureType<Components> && ...)
         constexpr Entity Spawn();
+
         template <typename... Components>
         constexpr Entity Spawn(Components&&... p_components);
 
-        // This should live somewhere else
-        template <typename Component>
-        Component* GetComponent(Entity const& p_entity)
-        {
-            return m_archetypeArena.GetComponent<Component>(m_entities[static_cast<SizeT>(p_entity.GetID())]);
-        }
+        void Destroy(Entity const& p_entity) { m_archetypeArena.Destroy(GetEntityKey(p_entity)); }
 
         template <typename... Components>
+        requires((!ConceptUtils::IsIndirectType<Components>) && ...)
         EntityView<Components...> ViewComponents() const
         {
             return EntityView<Components...>(m_archetypeArena);
         }
 
     private:
+        template <typename Component>
+        requires(!ConceptUtils::IsIndirectType<Component>)
+        Component* GetComponent(Entity const& p_entity)
+        {
+            return m_archetypeArena.GetComponent<Component>(GetEntityKey(p_entity));
+        }
+
+        constexpr EntityKey GetEntityKey(Entity const& p_entity) const
+        {
+            return m_entities[static_cast<SizeT>(p_entity.GetID())];
+        }
+
+    private:
+        using EntityProxyStorage = std::vector<EntityKey>;
         EntityProxyStorage m_entities;
+
         ComponentRegistry m_componentRegistry;
         SystemRegistry m_systemRegistry;
         ArchetypeArena m_archetypeArena;
     };
 
     template <typename... ComponentTypes, typename... SystemTypes>
+    requires((ConceptUtils::IsPureType<ComponentTypes> && ...) && (ConceptUtils::IsPureType<SystemTypes> && ...))
     constexpr Garden::Garden(TypeList<ComponentTypes...>, TypeList<SystemTypes...>)
         : m_componentRegistry(
             TypeListUtils::SortTypes_T<TypeListUtils::CompareECSPacking,
@@ -56,6 +77,7 @@ namespace Zen
     {}
 
     template <typename... Components>
+    requires(ConceptUtils::IsPureType<Components> && ...)
     constexpr Entity Garden::Spawn()
     {
         return Spawn(Components{}...);
@@ -69,9 +91,9 @@ namespace Zen
         return Entity(Entity::ID(m_entities.size() - 1), this);
     }
 
-    // TODO: This is here so that it knows about m_garden->GetComponent() instead of in the actual Entity code
-    // It NEEDS to be relocated
+    // Definition for Entity::GetComponent since it needs to be aware of Garden's API
     template <typename Component>
+    requires(!ConceptUtils::IsIndirectType<Component>)
     Component* Entity::GetComponent() const
     {
         return m_garden->GetComponent<Component>(*this);

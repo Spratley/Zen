@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Utils/Zen_ConceptUtils.h"
 #include "../Utils/Zen_TypeListUtils.h"
 #include "../Zen_Types.h"
 #include "Archetype/Zen_ArchetypeArena.h"
@@ -10,6 +11,7 @@
 namespace Zen
 {
     template <typename... Components>
+    requires(!ConceptUtils::IsIndirectType<Components> && ...)
     struct EntityView
     {
         static constexpr SizeT ComponentCount = sizeof...(Components);
@@ -67,10 +69,10 @@ namespace Zen
                 return std::tie<Components&...>(GetBuffer<Components>()[m_entityIndex]...);
             }
 
-            constexpr Zen::TypeListUtils::GetFirst_T<TypeList<Components...>>& operator*() const
+            constexpr TypeListUtils::GetFirst_T<TypeList<Components...>>& operator*() const
             requires(sizeof...(Components) == 1)
             {
-                return GetBuffer<Zen::TypeListUtils::GetFirst_T<TypeList<Components...>>>()[m_entityIndex];
+                return GetBuffer<TypeListUtils::GetFirst_T<TypeList<Components...>>>()[m_entityIndex];
             }
 
             constexpr bool ValidateArchetypeComponents() const
@@ -132,10 +134,22 @@ namespace Zen
             : m_source(p_source)
         {}
 
-        YK_SizeT CountU() const
+        constexpr SizeT CountU() const
         {
-            // TODO: Fill
-            return 0;
+            SizeT count = 0;
+            for (SizeT archetypeIndex = 0, endIndex = m_source.ArchetypeCount(); archetypeIndex < endIndex;
+                 ++archetypeIndex)
+
+            {
+                ArchetypeStorage const* storage = m_source.GetArchetypeStorage(archetypeIndex);
+
+                if (!storage->m_archetype.Contains<Components...>())
+                {
+                    continue;
+                }
+                count += storage->m_count;
+            }
+            return count;
         }
 
         constexpr Iterator begin() const { return Iterator(m_source); }

@@ -34,6 +34,8 @@ namespace Zen
         template <typename... Components>
         EntityKey Spawn(Components&&... p_components);
 
+        void Destroy(EntityKey p_entity);
+
         ArchetypeStorage const* GetArchetypeStorage(SizeT p_index) const;
 
         template <typename Component>

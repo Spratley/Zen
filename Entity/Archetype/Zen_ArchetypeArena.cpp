@@ -1,9 +1,11 @@
 #include "Zen_ArchetypeArena.h"
 
+#include "../../Component/Zen_ComponentInfo.h"
 #include "../../Entity/Zen_Entity.h"
 #include "../../Utils/Zen_DebugUtils.h"
 #include "../../Utils/Zen_LoopUtils.h"
 #include "../../Zen_Types.h"
+#include "Zen_Archetype.h"
 #include "Zen_ArchetypeStorage.h"
 
 #include <algorithm>
@@ -20,6 +22,35 @@ namespace Zen
         m_archetypeBufferBegin = static_cast<Byte*>(buffer);
         m_archetypeStorageBuffer =
           static_cast<ArchetypeStorage*>(static_cast<void*>(m_archetypeBufferBegin + p_arenaCapacityBytes)) - 1;
+    }
+
+    void ArchetypeArena::Destroy(EntityKey p_entity)
+    {
+        ZEN_ASSERT(p_entity.m_archetypeIndex < m_archetypeCount,
+                   "ArchetypeArena::Destroy() called on an invalid entity! (Archetype out of range)");
+
+        ArchetypeStorage* archetypeStorage = GetArchetypeStorage(p_entity.m_archetypeIndex);
+        ZEN_ASSERT(p_entity.m_index < archetypeStorage->m_count,
+                   "ArchetypeArena::Destroy() called on an invalid entity! (Index out of range)");
+
+        Archetype const& archetype = archetypeStorage->m_archetype;
+
+        for (SizeT componentIndex = 0, endIndex = archetype.GetComponentCount(); componentIndex < endIndex;
+             ++componentIndex)
+        {
+            ComponentInfo const& componentInfo = archetype.GetComponentInfo(componentIndex);
+            Byte* componentBuffer = static_cast<Byte*>(archetypeStorage->GetBuffer(componentIndex));
+            Byte* component = componentBuffer + (componentInfo.m_size * p_entity.m_index);
+            componentInfo.m_factory.Destroy(component);
+
+            if (p_entity.m_index < archetypeStorage->m_count - 1)
+            {
+                std::move(component + componentInfo.m_size,
+                          componentBuffer + (componentInfo.m_size * archetypeStorage->m_count),
+                          component);
+            }
+        }
+        --archetypeStorage->m_count;
     }
 
     ArchetypeStorage const* ArchetypeArena::GetArchetypeStorage(SizeT p_index) const

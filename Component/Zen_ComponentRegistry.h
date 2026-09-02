@@ -46,7 +46,7 @@ namespace Zen
 
             if (p_componentIndex >= componentInfos.size())
             {
-                return ComponentInfo::GetNullInfo();
+                return ComponentInfo();
             }
             return componentInfos[p_componentIndex];
         }

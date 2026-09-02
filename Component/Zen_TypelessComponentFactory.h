@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Utils/Zen_ConceptUtils.h"
 #include "../Utils/Zen_MemoryUtils.h"
 
 namespace Zen
@@ -16,27 +17,34 @@ namespace Zen
     {
     public:
         template <typename ComponentType>
+        requires(ConceptUtils::IsPureType<ComponentType>)
         static consteval TypelessComponentFactory GetFactory()
         {
-            return TypelessComponentFactory([](void* p_address) -> void* {
-                return static_cast<void*>(MemoryUtils::PlacementNew<ComponentType>(static_cast<ComponentType*>(p_address)));
-            });
+            return TypelessComponentFactory(
+              [](void* /*p_address*/) -> void* {
+                  return nullptr;
+                  // return static_cast<void*>(
+                  //   MemoryUtils::PlacementNew<ComponentType>(static_cast<ComponentType*>(p_address)));
+              },
+              [](void* p_component) { static_cast<ComponentType*>(p_component)->~ComponentType(); });
         }
 
-        consteval TypelessComponentFactory()
-            : m_makeImpl(nullptr)
-        {}
+        consteval TypelessComponentFactory() = default;
 
         constexpr void* MakeInPlace(void* p_address) const { return m_makeImpl(p_address); }
+        constexpr void Destroy(void* p_component) const { m_destroyImpl(p_component); }
 
     private:
         using MakeFunctionType = void* (*)(void*);
+        using DestroyFunctionType = void (*)(void*);
 
-        consteval TypelessComponentFactory(MakeFunctionType const& p_makeImpl)
+        consteval TypelessComponentFactory(MakeFunctionType p_makeImpl, DestroyFunctionType p_destroyImpl)
             : m_makeImpl(p_makeImpl)
+            , m_destroyImpl(p_destroyImpl)
         {}
 
     private:
-        MakeFunctionType m_makeImpl;
+        MakeFunctionType m_makeImpl = nullptr;
+        DestroyFunctionType m_destroyImpl = nullptr;
     };
 } // namespace Zen

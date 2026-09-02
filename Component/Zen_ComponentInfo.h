@@ -17,22 +17,17 @@ namespace Zen
                                  alignof(ComponentType));
         };
 
-        // TODO: Remove me
-        static consteval ComponentInfo GetNullInfo() { return ComponentInfo(); }
-
-        consteval ComponentInfo(TypelessComponentFactory p_factory = TypelessComponentFactory(),
-                                U64 p_typeHash = 0u,
-                                SizeT p_size = 0u,
-                                SizeT p_alignment = 0u)
+        consteval ComponentInfo() = default;
+        consteval ComponentInfo(TypelessComponentFactory p_factory, U64 p_typeHash, SizeT p_size, SizeT p_alignment)
             : m_factory(p_factory)
             , m_typeHash(p_typeHash)
             , m_size(p_size)
             , m_alignment(p_alignment)
         {}
 
-        TypelessComponentFactory m_factory;
-        U64 m_typeHash;
-        SizeT m_size;
-        SizeT m_alignment;
+        TypelessComponentFactory m_factory = TypelessComponentFactory();
+        U64 m_typeHash = 0u;
+        SizeT m_size = 0u;
+        SizeT m_alignment = 0u;
     };
 } // namespace Zen
