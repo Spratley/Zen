@@ -9,6 +9,7 @@
 #include "Utils/Zen_TypeListUtils.h"
 #include "Zen_Types.h"
 
+#include <queue>
 #include <vector>
 
 namespace Zen
@@ -35,7 +36,22 @@ namespace Zen
         template <typename... Components>
         constexpr Entity Spawn(Components&&... p_components);
 
-        void Destroy(Entity const& p_entity) { m_archetypeArena.Destroy(GetEntityKey(p_entity)); }
+        void Destroy(Entity const& p_entity)
+        {
+            EntityKey key = GetEntityKey(p_entity);
+            m_archetypeArena.Destroy(key);
+
+            // Temporary until I find a good solution
+            for (EntityKey& otherKey : m_entities)
+            {
+                if (otherKey.m_archetypeIndex == key.m_archetypeIndex && otherKey.m_index > key.m_index)
+                {
+                    --otherKey.m_index;
+                }
+            }
+
+            m_freeIDs.push(p_entity.GetID());
+        }
 
         template <typename... Components>
         requires((!ConceptUtils::IsIndirectType<Components>) && ...)
@@ -60,6 +76,8 @@ namespace Zen
     private:
         using EntityProxyStorage = std::vector<EntityKey>;
         EntityProxyStorage m_entities;
+        // Temp until I get time to put a proper fix in
+        std::queue<Entity::ID> m_freeIDs;
 
         ComponentRegistry m_componentRegistry;
         SystemRegistry m_systemRegistry;
@@ -87,8 +105,20 @@ namespace Zen
     constexpr Entity Garden::Spawn(Components&&... p_components)
     {
         EntityKey entityKey = m_archetypeArena.Spawn<Components...>(std::forward<Components>(p_components)...);
-        m_entities.push_back(entityKey);
-        return Entity(Entity::ID(m_entities.size() - 1), this);
+
+        Entity::ID id;
+        if (m_freeIDs.empty())
+        {
+            m_entities.push_back(entityKey);
+            id = Entity::ID(m_entities.size() - 1);
+        }
+        else
+        {
+            id = m_freeIDs.front();
+            m_freeIDs.pop();
+            m_entities[static_cast<SizeT>(id)] = entityKey;
+        }
+        return Entity(id, this);
     }
 
     // Definition for Entity::GetComponent since it needs to be aware of Garden's API
