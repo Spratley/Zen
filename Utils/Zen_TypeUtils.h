@@ -12,6 +12,14 @@ namespace Zen
 {
     namespace TypeUtils
     {
+        template <typename T>
+        struct DependentFalse
+        {
+            static constexpr bool value = false;
+        };
+        template <typename T>
+        constexpr bool DependentFalse_V = DependentFalse<T>::value;
+
         // -=-=-=-= Type Hash =-=-=-=-
         // Oh C++26 reflection, how I yearn for you
 
@@ -34,7 +42,7 @@ namespace Zen
         template <typename T, typename HashSize>
         struct HashType
         {
-            static_assert(false, "Unsupported hash type");
+            static_assert(DependentFalse<T>, "Unsupported hash type");
         };
 
         template <typename T>
@@ -50,7 +58,7 @@ namespace Zen
         };
 
         template <typename T, typename HashSize>
-        constexpr inline HashSize HashType_V = HashType<T, HashSize>::value;
+        constexpr HashSize HashType_V = HashType<T, HashSize>::value;
 
         // -=-=-=-= Type Hash Collision Validation =-=-=-=-
         template <typename T>
