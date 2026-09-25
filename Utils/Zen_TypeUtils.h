@@ -42,7 +42,7 @@ namespace Zen
         template <typename T, typename HashSize>
         struct HashType
         {
-            static_assert(DependentFalse<T>, "Unsupported hash type");
+            static_assert(DependentFalse_V<T>, "Unsupported hash type");
         };
 
         template <typename T>
