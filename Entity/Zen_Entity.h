@@ -17,6 +17,9 @@ namespace Zen
             , m_garden(p_garden)
         {}
 
+        constexpr bool IsValid() const { return m_id != ID(SizeT_Max); }
+        constexpr bool operator!() const { return !IsValid(); }
+
         constexpr ID GetID() const { return m_id; }
 
         template <typename Component>
@@ -24,6 +27,7 @@ namespace Zen
         Component* GetComponent() const;
 
     private:
+        // TODO: Add generation so we don't get old handles pointing to new entities
         ID m_id = ID(SizeT_Max);
         Garden* m_garden = nullptr;
     };

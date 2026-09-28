@@ -38,6 +38,11 @@ namespace Zen
 
         void Destroy(Entity const& p_entity)
         {
+            if (!p_entity)
+            {
+                return;
+            }
+
             EntityKey key = GetEntityKey(p_entity);
             m_archetypeArena.Destroy(key);
 
