@@ -7,6 +7,7 @@
 #include <array>
 #include <limits>
 #include <tuple>
+#include <type_traits>
 
 namespace Zen
 {
@@ -19,6 +20,19 @@ namespace Zen
         };
         template <typename T>
         constexpr bool DependentFalse_V = DependentFalse<T>::value;
+
+        // -=-=-=-= TypeList Indexing =-=-=-=-
+        template <SizeT Index, typename Types>
+        struct IndexTypeList;
+
+        template <SizeT Index, typename FirstType, typename... Types>
+        struct IndexTypeList<Index, TypeList<FirstType, Types...>>
+        {
+            using Type =
+              std::conditional_t<Index == 0u, FirstType, typename IndexTypeList<Index - 1u, TypeList<Types...>>::Type>;
+        };
+        template <SizeT Index, typename Types>
+        using IndexTypeList_T = IndexTypeList<Index, Types>::Type;
 
         // -=-=-=-= Type Hash =-=-=-=-
         // Oh C++26 reflection, how I yearn for you
@@ -102,7 +116,7 @@ namespace Zen
             static constexpr bool value = []() {
                 if constexpr (violatingIndex != invalidIndex)
                 {
-                    using CollidingType = typename std::tuple_element_t<violatingIndex, TypeList<Types...>>;
+                    using CollidingType = IndexTypeList_T<violatingIndex, TypeList<Types...>>;
                     [[maybe_unused]] TypeHashCollisionError<CollidingType> errorTrigger;
                 }
                 return violatingIndex == invalidIndex;
@@ -123,15 +137,11 @@ namespace Zen
         public:
             template <typename T>
             constexpr U32 GetIndex() const
-            {
-                return m_getIndex(HashType_V<T, U64>);
-            }
+            { return m_getIndex(HashType_V<T, U64>); }
 
             template <typename T>
             constexpr bool IsIndexed() const
-            {
-                return m_getIndex(HashType_V<T, U64>) != std::numeric_limits<U32>::max();
-            }
+            { return m_getIndex(HashType_V<T, U64>) != std::numeric_limits<U32>::max(); }
 
         private:
             template <typename... Types>
